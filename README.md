@@ -2,7 +2,7 @@
 
 **Redact PII and secrets from an LLM stream without buffering the response.**
 
-Every other guardrail makes you wait for the full reply before you can filter it.
+Most guardrails filter after the fact: you buffer the whole reply, then scan it.
 This one filters in flight — PII, API keys, private keys and banned content —
 and proves the result is identical to buffering. Zero runtime dependencies, works
 with the Vercel AI SDK, the OpenAI SDK, Anthropic, and any Web Stream.

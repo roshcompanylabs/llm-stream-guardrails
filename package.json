@@ -24,10 +24,7 @@
     "openai",
     "anthropic",
     "chatbot",
-    "streaming",
-    "gdpr",
-    "hipaa",
-    "pci-dss"
+    "streaming"
   ],
   "author": {
     "name": "ROSH Company Labs",

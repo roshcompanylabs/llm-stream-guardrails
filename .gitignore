@@ -9,3 +9,8 @@ dist/
 OUTREACH-*.md
 playground/index.html
 *.tgz
+
+# never commit credentials
+.npmrc
+*.token
+ISSUE-*.md
