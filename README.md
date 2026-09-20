@@ -298,6 +298,19 @@ block lists, ReDoS, and surrogate-pair corruption.
 
 ---
 
+## Support and contact
+
+| | |
+| --- | --- |
+| **A bug, or a false positive** | [Open an issue](https://github.com/roshcompanylabs/llm-stream-guardrails/issues) |
+| **A detector bypass — a value that got through** | [Report it privately](https://github.com/roshcompanylabs/llm-stream-guardrails/security/advisories/new). Please do not open a public issue for this. See [SECURITY.md](SECURITY.md). |
+| **Commercial or licensing enquiries** | roshcompanylabs@gmail.com |
+
+Bypass reports are the most useful thing you can send. Every accepted case is added to
+the corpus in `bench/corpus.mjs`, so the build fails if it ever regresses.
+
+---
+
 ## License
 
 MIT © ROSH Company Labs

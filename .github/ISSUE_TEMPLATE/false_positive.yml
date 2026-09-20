@@ -1,0 +1,30 @@
+name: False positive
+description: Something ordinary was masked that should have been left alone
+labels: [false-positive]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        False positives are taken seriously — a filter that destroys a legitimate order
+        number in a live support chat is worse than no filter. The clean corpus in
+        `bench/corpus.mjs` exists for exactly these, and accepted cases are added to it
+        so the build fails if they ever regress.
+  - type: textarea
+    id: text
+    attributes:
+      label: The text that was masked
+      description: The harmless value, and what it actually is (an order number, a hash, a version string...).
+    validations:
+      required: true
+  - type: input
+    id: detector
+    attributes:
+      label: Which detector fired
+      placeholder: creditCard, ssn, secret, labeledSensitive...
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      placeholder: llm-stream-guardrails 0.7.0
+    validations:
+      required: true

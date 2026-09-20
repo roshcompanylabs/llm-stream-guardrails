@@ -27,7 +27,8 @@
     "streaming"
   ],
   "author": {
-    "name": "ROSH Company Labs",
+    "name": "ROSH™ Company Labs",
+    "email": "roshcompanylabs@gmail.com",
     "url": "https://roshcompanylabs.com"
   },
   "license": "MIT",
@@ -46,7 +47,8 @@
     "bench/precision.mjs",
     "CHANGELOG.md",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "SECURITY.md"
   ],
   "engines": {
     "node": ">=18"
