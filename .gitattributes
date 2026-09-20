@@ -1,0 +1,9 @@
+# Language statistics should describe the library, not its tooling.
+# The library is TypeScript; the tests, benchmarks and playground are not part
+# of what a consumer installs.
+test/**        linguist-vendored
+bench/**       linguist-vendored
+playground/**  linguist-vendored
+
+# Keep line endings stable across platforms.
+* text=auto eol=lf
