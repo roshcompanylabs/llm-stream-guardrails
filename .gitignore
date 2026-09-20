@@ -1,0 +1,11 @@
+node_modules/
+dist/
+*.tgz
+.DS_Store
+.env
+.env.*
+
+# private working notes
+OUTREACH-*.md
+playground/index.html
+*.tgz

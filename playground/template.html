@@ -1,0 +1,289 @@
+<title>llm-stream-guardrails Playground</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+  :root {
+    --bg: #F2F4F6; --surface: #FFFFFF; --surface-2: #E7EBEF; --surface-3: #DDE3E9;
+    --border: #D3DAE1; --border-strong: #B9C3CD;
+    --ink: #10161D; --ink-2: #47535F; --muted: #6E7B87;
+    --accent: #0E7C86; --accent-2: #0AA2B0; --accent-soft: rgba(14,124,134,.10);
+    --danger: #B23A2E; --danger-soft: rgba(178,58,46,.13);
+    --ok: #2E7D4F; --ok-soft: rgba(46,125,79,.12);
+    --shadow: 0 1px 2px rgba(16,22,29,.06), 0 8px 24px rgba(16,22,29,.07);
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --r: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0E1317; --surface: #161D23; --surface-2: #1E262E; --surface-3: #263039;
+      --border: #2C3740; --border-strong: #3B4854;
+      --ink: #E6ECF1; --ink-2: #A3B1BD; --muted: #71808D;
+      --accent: #3FD0DE; --accent-2: #6FE3EE; --accent-soft: rgba(63,208,222,.12);
+      --danger: #F07167; --danger-soft: rgba(240,113,103,.16);
+      --ok: #5FBE88; --ok-soft: rgba(95,190,136,.14);
+      --shadow: 0 1px 2px rgba(0,0,0,.35), 0 10px 30px rgba(0,0,0,.4);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0E1317; --surface: #161D23; --surface-2: #1E262E; --surface-3: #263039;
+    --border: #2C3740; --border-strong: #3B4854;
+    --ink: #E6ECF1; --ink-2: #A3B1BD; --muted: #71808D;
+    --accent: #3FD0DE; --accent-2: #6FE3EE; --accent-soft: rgba(63,208,222,.12);
+    --danger: #F07167; --danger-soft: rgba(240,113,103,.16);
+    --ok: #5FBE88; --ok-soft: rgba(95,190,136,.14);
+    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 10px 30px rgba(0,0,0,.4);
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 1140px; margin: 0 auto; padding: 0 clamp(14px,3vw,32px) 64px; }
+
+  header { padding: clamp(28px,5vw,52px) 0 22px; }
+  .brand { font-family: var(--mono); font-weight: 700; font-size: clamp(1.9rem,4.5vw,2.7rem); letter-spacing: -.035em; margin: 0 0 10px; }
+  .brand .dot { color: var(--accent); }
+  .tag { font-size: clamp(1rem,2vw,1.12rem); color: var(--ink-2); max-width: 62ch; margin: 0 0 16px; }
+  .promise { display: inline-flex; align-items: flex-start; gap: 9px; background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent); border-radius: var(--r); padding: 10px 14px; font-size: .88rem; color: var(--ink-2); max-width: 70ch; }
+  .promise b { color: var(--ink); }
+
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow); }
+  .controls { padding: 16px 18px; margin-bottom: 14px; display: grid; gap: 14px; }
+  .presets { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
+  .lbl { font-family: var(--mono); font-size: .68rem; letter-spacing: .13em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+  button, select { font-family: var(--sans); font-size: .85rem; color: var(--ink); background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: 7px; padding: 6px 11px; cursor: pointer; }
+  button:hover, select:hover { border-color: var(--accent); color: var(--accent); }
+  button.on { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .run { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 600; padding: 9px 20px; font-size: .92rem; }
+  .run:hover { background: var(--accent-2); border-color: var(--accent-2); color: var(--bg); }
+  .run[disabled] { opacity: .55; cursor: default; }
+
+  textarea { width: 100%; min-height: 128px; resize: vertical; font-family: var(--mono); font-size: .82rem; line-height: 1.6; color: var(--ink); background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 13px; }
+
+  .knobs { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; }
+  .knob { display: flex; align-items: center; gap: 9px; font-size: .82rem; color: var(--ink-2); }
+  input[type=range] { width: 122px; accent-color: var(--accent); }
+  .val { font-family: var(--mono); font-size: .78rem; color: var(--accent); min-width: 44px; }
+
+  .panes { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .pane { display: flex; flex-direction: column; min-width: 0; }
+  .pane-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 14px; border-bottom: 1px solid var(--border); background: var(--surface-2); border-radius: var(--r) var(--r) 0 0; }
+  .pane-t { font-family: var(--mono); font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .pip { font-family: var(--mono); font-size: .68rem; padding: 2px 8px; border-radius: 20px; }
+  .pip.bad { background: var(--danger-soft); color: var(--danger); }
+  .pip.good { background: var(--ok-soft); color: var(--ok); }
+  .out { font-family: var(--mono); font-size: .8rem; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; padding: 14px; min-height: 260px; max-height: 420px; overflow-y: auto; margin: 0; }
+  .out.raw { color: var(--danger); }
+  .out.safe { color: var(--ink); }
+  .red { background: var(--danger-soft); color: var(--danger); border-radius: 4px; padding: 0 4px; font-weight: 500; }
+  .caret { display: inline-block; width: 7px; height: 1em; background: var(--accent); vertical-align: -2px; animation: bl 1s steps(2) infinite; }
+  @keyframes bl { 50% { opacity: 0; } }
+
+  .found { margin-top: 14px; }
+  .found-h { padding: 9px 14px; border-bottom: 1px solid var(--border); background: var(--surface-2); border-radius: var(--r) var(--r) 0 0; font-family: var(--mono); font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+  th, td { text-align: left; padding: 8px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  th { font-family: var(--mono); font-size: .66rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+  td.k { font-family: var(--mono); color: var(--danger); white-space: nowrap; }
+  td.v { font-family: var(--mono); color: var(--ink-2); overflow-wrap: anywhere; }
+  .empty { padding: 16px 14px; color: var(--muted); font-size: .85rem; }
+
+  .note { margin-top: 18px; font-size: .83rem; color: var(--muted); max-width: 72ch; }
+  .note code { font-family: var(--mono); background: var(--surface-2); padding: 1px 6px; border-radius: 5px; color: var(--ink-2); }
+
+  .toggle { position: fixed; top: 14px; right: 14px; z-index: 9; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; }
+
+  @media (max-width: 860px) { .panes { grid-template-columns: 1fr; } .out { min-height: 170px; } }
+  @media (prefers-reduced-motion: reduce) { .caret { animation: none; } }
+</style>
+
+<button class="toggle" id="themeBtn" aria-label="Toggle light or dark theme">◐</button>
+
+<div class="wrap">
+  <header>
+    <h1 class="brand">llm-stream-<span class="dot">guardrails</span></h1>
+    <p class="tag">Filters PII, secrets and banned content out of an LLM stream — <b>mid-stream</b>, before the reader ever sees it. Type anything below and watch it work.</p>
+    <div class="promise"><span>◆</span><span>For <b>any</b> input and <b>any</b> chunking, the streamed result is byte-identical to filtering the whole string at once. Drag the chunk size down to 1 character — it still catches everything.</span></div>
+  </header>
+
+  <div class="panel controls">
+    <div class="presets">
+      <span class="lbl">Try</span>
+      <button data-p="support">Support chat</button>
+      <button data-p="record">Labelled record</button>
+      <button data-p="env">Leaked .env</button>
+      <button data-p="unicode">Unicode evasion</button>
+      <button data-p="pem">Private key</button>
+      <button data-p="emoji">Emoji safety</button>
+      <button data-p="clean">Clean text</button>
+    </div>
+
+    <textarea id="input" spellcheck="false" aria-label="Text the model streams"></textarea>
+
+    <div class="knobs">
+      <label class="knob">Chunk size <input type="range" id="chunk" min="1" max="40" value="4"><span class="val" id="chunkV">4 ch</span></label>
+      <label class="knob">Speed <input type="range" id="speed" min="0" max="30" value="8"><span class="val" id="speedV">8 ms</span></label>
+      <label class="knob">Action
+        <select id="action"><option value="mask">mask</option><option value="report">report</option><option value="block">block</option></select>
+      </label>
+      <label class="knob"><input type="checkbox" id="norm" checked> Unicode folding</label>
+      <button class="run" id="run">▶ Replay stream</button>
+    </div>
+  </div>
+
+  <div class="panes">
+    <div class="panel pane">
+      <div class="pane-h"><span class="pane-t">1 · Raw — what the model said</span><span class="pip bad" id="rawPip">unfiltered</span></div>
+      <pre class="out raw" id="rawOut"></pre>
+    </div>
+    <div class="panel pane">
+      <div class="pane-h"><span class="pane-t">2 · Filtered — what the user sees</span><span class="pip good" id="safePip">protected</span></div>
+      <pre class="out safe" id="safeOut"></pre>
+    </div>
+  </div>
+
+  <div class="panel found">
+    <div class="found-h">3 · Caught <span id="count"></span></div>
+    <div id="foundBody"><p class="empty">Nothing caught yet.</p></div>
+  </div>
+
+  <p class="note">This page runs the real <code>llm-stream-guardrails</code> package compiled to the browser — the same code published to npm. Nothing you type leaves your device; there is no server and no network call.</p>
+</div>
+
+<script>
+/*__STREAMSIEVE_BUNDLE__*/
+</script>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var root = document.documentElement;
+
+  try { var t = localStorage.getItem('ss-theme'); if (t === 'dark' || t === 'light') root.setAttribute('data-theme', t); } catch (e) {}
+  $('themeBtn').addEventListener('click', function () {
+    var cur = root.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    var next = cur === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('ss-theme', next); } catch (e) {}
+  });
+
+  var PRESETS = {
+    support: "Sure — I found your account.\n\nEmail on file: jane.doe@acme-corp.com\nCard ending 1111: 4111 1111 1111 1111\nPhone: +1 555 867 5309\n\nAnything else I can help with?",
+    record: "RECORD 0001\nName: Adam Testfield\nEmail: adam.testfield@example.test\nPhone: +1-202-555-0101\nDate of Birth: 1988-04-12\nCard Number: CARD-TEST-0001-4827\nCVV: CVV-TEST-001\nAccount Number: ACCOUNT-TEST-000001\nRouting Number: ROUTING-TEST-0001\nNational ID: ID-TEST-000001\nPassport: PASSPORT-TEST-000001\nPassword: TEST_PASSWORD_0001\nAPI Key: sk-test-0000000001\n\nSECRET_KEY=TEST_SECRET_KEY_0001\nACCESS_TOKEN=TEST_ACCESS_TOKEN_0001\nDATABASE_PASSWORD=TEST_DATABASE_PASSWORD_0001\n\nThe values above are caught by their LABEL, not their shape —\nnone of them looks like a real card, key or ID.\nName and Address are deliberately left alone: those labels\ncollide with ordinary output like \"Product Name:\".",
+    env: "Here is the config you asked for:\n\nOPENAI_KEY=sk-abcdefghijklmnopqrstuvwxyz123456\nANTHROPIC_KEY=sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789\nSTRIPE=sk_live_abcdefghij0123456789\nAWS=AKIAIOSFODNN7EXAMPLE\nGITHUB=ghp_abcdefghijklmnopqrstuvwxyz0123456789",
+    unicode: "These all LOOK like plain text, but each hides a real card number using\nnon-breaking spaces, fullwidth digits or zero-width characters:\n\n1. 4111 1111 1111 1111\n2. ４１１１ １１１１ １１１１ １１１１\n3. 4111​ 1111 1111 1111\n4. 4111–1111–1111–1111\n\nAnd a homoglyph email (Cyrillic a): аdmin@corp.com",
+    pem: "Here is the deploy key you requested:\n\n-----BEGIN RSA PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDemoKeyBodyHere\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n-----END RSA PRIVATE KEY-----\n\nKeep it safe!",
+    emoji: "Shipping update 📦🚚✅ your order is on the way 🎉\n\nNaive filters corrupt emoji by cutting them in half at a chunk boundary.\nDrag chunk size to 1 and watch these stay perfect: 🚀🌟💡✨",
+    clean: "There is nothing sensitive in this message at all.\n\nIt should come out the other side byte-for-byte identical — a filter that\nmangles ordinary text is worse than no filter. Japanese: 日本語のテキスト\nAccents: café naïve résumé."
+  };
+
+  var esc = function (s) { return s.replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); };
+  var hl = function (s) { return esc(s).replace(/\[redacted:[a-zA-Z]+\]/g, function (m) { return '<span class="red">' + m + '</span>'; }); };
+
+  var timer = null;
+  function policy() {
+    return {
+      action: $('action').value,
+      normalize: $('norm').checked,
+      onDetect: function (d) { addRow(d); }
+    };
+  }
+
+  var rows = 0;
+  function resetFound() {
+    rows = 0;
+    $('foundBody').innerHTML = '<p class="empty">Nothing caught yet.</p>';
+    $('count').textContent = '';
+  }
+  function addRow(d) {
+    if (rows === 0) {
+      $('foundBody').innerHTML = '<table><thead><tr><th>Detector</th><th>Value it removed</th></tr></thead><tbody id="tb"></tbody></table>';
+    }
+    rows++;
+    var v = d.match.length > 70 ? d.match.slice(0, 70) + '…' : d.match;
+    var tr = document.createElement('tr');
+    tr.innerHTML = '<td class="k">' + esc(d.detector) + '</td><td class="v">' + esc(v) + '</td>';
+    document.getElementById('tb').appendChild(tr);
+    $('count').textContent = '— ' + rows;
+  }
+
+  function renderInstant() {
+    if (timer) { clearInterval(timer); timer = null; }
+    var text = $('input').value;
+    resetFound();
+    var r = sieveText(text, policy());
+    $('rawOut').innerHTML = esc(text);
+    $('safeOut').innerHTML = hl(r.text);
+    $('run').disabled = false;
+    $('run').textContent = '▶ Replay stream';
+  }
+
+  function play() {
+    if (timer) { clearInterval(timer); timer = null; }
+    var text = $('input').value;
+    var size = +$('chunk').value;
+    var delay = +$('speed').value;
+    resetFound();
+    $('rawOut').innerHTML = '';
+    $('safeOut').innerHTML = '';
+    $('run').disabled = true;
+    $('run').textContent = 'streaming…';
+
+    var engine = new Sieve(policy());
+    var i = 0, raw = '', safe = '', stopped = false;
+
+    function step() {
+      if (stopped) return;
+      if (i >= text.length) {
+        clearInterval(timer); timer = null;
+        safe += engine.flush().text;
+        $('rawOut').innerHTML = esc(raw);
+        $('safeOut').innerHTML = hl(safe);
+        $('run').disabled = false;
+        $('run').textContent = '▶ Replay stream';
+        return;
+      }
+      var piece = text.slice(i, i + size);
+      i += size;
+      raw += piece;
+      var res = engine.push(piece);
+      safe += res.text;
+      if (res.blocked) stopped = true;
+      $('rawOut').innerHTML = esc(raw) + '<span class="caret"></span>';
+      $('safeOut').innerHTML = hl(safe) + '<span class="caret"></span>';
+      $('rawOut').scrollTop = $('rawOut').scrollHeight;
+      $('safeOut').scrollTop = $('safeOut').scrollHeight;
+      if (stopped) {
+        clearInterval(timer); timer = null;
+        $('safeOut').innerHTML = hl(safe) + '<span class="red">[stream blocked]</span>';
+        $('run').disabled = false;
+        $('run').textContent = '▶ Replay stream';
+      }
+    }
+    timer = setInterval(step, Math.max(delay, 1));
+  }
+
+  $('run').addEventListener('click', play);
+  $('input').addEventListener('input', renderInstant);
+  $('action').addEventListener('change', renderInstant);
+  $('norm').addEventListener('change', renderInstant);
+  $('chunk').addEventListener('input', function () { $('chunkV').textContent = $('chunk').value + ' ch'; });
+  $('speed').addEventListener('input', function () { $('speedV').textContent = $('speed').value + ' ms'; });
+
+  Array.prototype.forEach.call(document.querySelectorAll('[data-p]'), function (b) {
+    b.addEventListener('click', function () {
+      Array.prototype.forEach.call(document.querySelectorAll('[data-p]'), function (x) { x.classList.remove('on'); });
+      b.classList.add('on');
+      $('input').value = PRESETS[b.getAttribute('data-p')];
+      renderInstant();
+    });
+  });
+
+  // Open in a working state, not an empty shell.
+  document.querySelector('[data-p="support"]').classList.add('on');
+  $('input').value = PRESETS.support;
+  renderInstant();
+})();
+</script>

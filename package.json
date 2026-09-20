@@ -1,0 +1,79 @@
+{
+  "name": "llm-stream-guardrails",
+  "version": "0.7.0",
+  "description": "LLM guardrails for streaming: redact PII and secrets mid-stream, without buffering the response. Streamed output is byte-identical to batch at any chunking. Zero dependencies, works with the Vercel AI SDK, OpenAI and Anthropic.",
+  "keywords": [
+    "pii",
+    "pii-redaction",
+    "redaction",
+    "redact",
+    "anonymization",
+    "masking",
+    "guardrails",
+    "ai-guardrails",
+    "llm-guardrails",
+    "llm-security",
+    "secrets",
+    "secret-scanning",
+    "dlp",
+    "data-loss-prevention",
+    "llm",
+    "ai",
+    "ai-sdk",
+    "vercel-ai-sdk",
+    "openai",
+    "anthropic",
+    "chatbot",
+    "streaming",
+    "gdpr",
+    "hipaa",
+    "pci-dss"
+  ],
+  "author": {
+    "name": "ROSH Company Labs",
+    "url": "https://roshcompanylabs.com"
+  },
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "bench/corpus.mjs",
+    "bench/precision.mjs",
+    "CHANGELOG.md",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc",
+    "test": "npm run build && node --test test/",
+    "prepublishOnly": "npm run build && node --test test/",
+    "bench": "npm run build && node bench/precision.mjs",
+    "playground": "npm run build && node playground/build.cjs && node playground/server.mjs",
+    "corpora": "npm run build && node bench/corpora.mjs",
+    "adversarial": "npm run build && node bench/adversarial.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "@types/node": "^20.14.0"
+  },
+  "homepage": "https://github.com/roshcompanylabs/llm-stream-guardrails#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/roshcompanylabs/llm-stream-guardrails.git"
+  },
+  "bugs": {
+    "url": "https://github.com/roshcompanylabs/llm-stream-guardrails/issues"
+  }
+}
