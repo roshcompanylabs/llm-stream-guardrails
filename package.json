@@ -57,7 +57,7 @@
   "scripts": {
     "build": "tsc",
     "test": "npm run build && node --test",
-    "prepublishOnly": "npm run build && node --test test/",
+    "prepublishOnly": "npm test",
     "bench": "node bench/precision.mjs",
     "playground": "npm run build && node playground/build.cjs && node playground/server.mjs",
     "corpora": "npm run build && node bench/corpora.mjs",
