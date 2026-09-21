@@ -56,6 +56,8 @@ function randomChunks(input, rand) {
 const CARD = '4111 1111 1111 1111';
 const KEY = 'sk-abcdefghijklmnopqrstuvwxyz123456';
 
+const PEM = '-----BEGIN RSA PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASC\n-----END RSA PRIVATE KEY-----';
+
 const CORPUS = [
   'plain prose with nothing sensitive in it at all',
   `a card ${CARD} mid sentence`,
@@ -72,13 +74,29 @@ const CORPUS = [
   '   ',
   CARD,
   KEY,
+  // Each of the following exists so that a policy below actually fires on it.
+  // Without these, the banned-word and label policies were being asserted
+  // against text that could never trigger them — a no-op dressed as coverage.
+  'this document is forbidden to share outside the company',
+  'пометка: секрет и больше ничего',
+  'この文書は機密です',
+  'Password: hunter2\nCVV: 419\nDate of Birth: 1988-02-29',
+  'Patient ID: PT-99120 admitted Tuesday',
+  `here is the key:\n${PEM}\nand text after it`,
+  `${PEM} at the very start`,
+  'an unterminated -----BEGIN RSA PRIVATE KEY-----\nMIIEvQIBADANBgkq that never closes',
+  `two cards ${CARD} and 5500-0000-0000-0004 together`,
+  'iban GB82 WEST 1234 5698 7654 32 and ssn 123-45-6789',
 ];
 
 const POLICIES = [
   {},
   { action: 'report' },
+  { action: 'block' },
   { mask: '#' },
+  { mask: (d) => `<${d.detector}>` },
   { bannedWords: ['forbidden', 'секрет', '機密'] },
+  { sensitiveLabels: ['patient id'] },
   { normalize: false },
 ];
 

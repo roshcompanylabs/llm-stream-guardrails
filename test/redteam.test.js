@@ -198,3 +198,34 @@ test('block mode leaks nothing before it fires, at any chunk size', () => {
     assert.ok(!out.includes('trailing'), `emitted after block at size ${size}`);
   }
 });
+
+test('a space-separated IBAN cannot be released before the account number completes', () => {
+  // The viable-prefix walk used to abandon the grouped-value hypothesis the
+  // moment it met a letter, because `sk-...456 ` reads like a digit group from
+  // the tail alone. An IBAN's groups are alphanumeric — `GB82 WEST 1234` — so
+  // that shortcut released the whole account number in cleartext at any chunk
+  // size small enough to split it, while a single-chunk call masked it. The
+  // streamed and batch outputs disagreed, which is the one thing this library
+  // promises cannot happen.
+  const IBAN = 'GB82 WEST 1234 5698 7654 32';
+  for (const input of [`iban ${IBAN} verified`, `${IBAN} and more`, IBAN]) {
+    const batch = sieveText(input).text;
+    assert.ok(!batch.includes('WEST 1234'), `batch failed to mask: ${batch}`);
+    for (const size of [1, 2, 3, 5, 7, 13, 64]) {
+      const out = streamThrough(input, size);
+      assert.ok(!out.includes('WEST 1234'), `IBAN leaked at size ${size}: ${out}`);
+      assert.equal(out, batch, `streamed !== batch at size ${size}`);
+    }
+  }
+});
+
+test('an uppercase run that is not an IBAN still settles instead of pinning the buffer', () => {
+  // The fix must not turn every capitalised word into held text.
+  const input = 'ORDER ABC 1234 DEF 5678 GHI shipped to the depot this morning';
+  const { text, detections } = sieveText(input);
+  assert.equal(detections.length, 0, `unexpected detections: ${JSON.stringify(detections)}`);
+  assert.equal(text, input);
+  for (const size of [1, 4, 16]) {
+    assert.equal(streamThrough(input, size), input, `mutated at size ${size}`);
+  }
+});

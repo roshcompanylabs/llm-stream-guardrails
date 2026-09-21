@@ -2,6 +2,56 @@
 
 All notable changes to this project. Versions follow [semver](https://semver.org/).
 
+## 0.7.1
+
+A leak found by making the equivalence test tell the truth.
+
+### Fixed
+
+- **A space-separated IBAN was released in cleartext when it arrived in small
+  chunks.** The walk that decides how far back a match could still grow
+  abandoned the grouped-value hypothesis the instant it met a letter — a
+  shortcut that exists because `sk-...456 ` reads like a digit group when you
+  only look at the tail. An IBAN's groups are alphanumeric (`GB82 WEST 1234`),
+  so the walk hit `WEST`, concluded it had been wrong, and settled the account
+  number as safe text. A single-chunk call masked it; any chunking that split it
+  did not. Streamed and batch output disagreed, which is the one thing this
+  library says cannot happen. The walk now carries an IBAN-shaped hypothesis
+  alongside the digits-only one, bounded by the longest IBAN any country issues.
+- **`action: 'block'` discarded the safe text preceding the detection.** A
+  stream had already delivered that prefix and cannot take it back, so a batch
+  call and a streamed call returned different things for the same input. The
+  prefix is text the engine had already settled as safe; it is now released
+  before the stream terminates, in both paths.
+- **`Policy.detectors` documented a default set that was never the default.**
+  The published types told every TypeScript user that `ipAddress` was on by
+  default. It is not, deliberately, and `labeledSensitive` and PEM key blocks
+  were missing from the list.
+
+### Changed
+
+- The equivalence test now exercises policies and inputs that actually fire.
+  Its banned-word policy was being asserted against text containing none of the
+  banned words, and `action: 'block'`, custom mask functions, `sensitiveLabels`
+  and PEM blocks were not covered at all. Both bugs above were invisible until
+  this changed; neither was introduced by it.
+- README corrections: the Web Streams example piped bytes into a string
+  transform, which would have quietly corrupted output rather than failing; the
+  detector table advertised Twilio, which was removed in 0.6, and omitted about
+  a dozen families that are implemented; the integration claim now says what is
+  true, that the OpenAI and Anthropic SDKs need a one-line map; the corpora
+  command does not claim to reproduce a table it cannot download; and the
+  54-sample regression figures carry their denominators instead of reading as
+  two independent 100% scores.
+
+### Added
+
+- CI on Node 18, 20 and 22, running the suite and the precision gate, plus a
+  leak gate that unpacks the tarball and fails the build on any build-machine
+  path, user name or host name.
+- `SECURITY.md`, `CONTRIBUTING.md` and issue templates, so a detector bypass
+  has somewhere private to go instead of a public issue.
+
 ## 0.7.0
 
 Idempotence, plus the adversarial harness that found the bug.

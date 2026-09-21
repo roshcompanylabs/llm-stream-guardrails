@@ -78,8 +78,13 @@ export interface PendingRegion {
 /** Configuration handed to the sieve. */
 export interface Policy {
   /**
-   * Detectors to run. Defaults to the full built-in set
-   * (email, creditCard, phone, secret, ssn, iban, ipAddress).
+   * Detectors to run. Defaults to the built-in set: `email`, `creditCard`,
+   * `phone`, `ssn`, `iban`, `secret` (credential families and complete PEM
+   * private key blocks) and `labeledSensitive`.
+   *
+   * `ipAddress` is exported but is **not** on by default — addresses appear
+   * constantly in technical output, so redacting them unasked is noise. Pass it
+   * explicitly to enable it.
    */
   detectors?: Detector[];
   /** Open/close regions that must be held until closed. Defaults to PEM key blocks. */

@@ -1,15 +1,25 @@
 # llm-stream-guardrails — LLM guardrails for streaming responses
 
+[![CI](https://github.com/roshcompanylabs/llm-stream-guardrails/actions/workflows/ci.yml/badge.svg)](https://github.com/roshcompanylabs/llm-stream-guardrails/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/llm-stream-guardrails)](https://www.npmjs.com/package/llm-stream-guardrails)
+[![zero dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)](package.json)
+[![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
 **Redact PII and secrets from an LLM stream without buffering the response.**
 
 Most guardrails filter after the fact: you buffer the whole reply, then scan it.
 This one filters in flight — PII, API keys, private keys and banned content —
-and proves the result is identical to buffering. Zero runtime dependencies, works
-with the Vercel AI SDK, the OpenAI SDK, Anthropic, and any Web Stream.
+and proves the result is identical to buffering. Zero runtime dependencies.
+
+It takes any async iterable of strings: the Vercel AI SDK's `textStream` goes in
+directly, and the OpenAI and Anthropic SDKs need a one-line map to pull the text
+out of their event objects (shown [below](#with-the-openai-and-anthropic-sdks)).
 
 ```bash
 npm install llm-stream-guardrails
 ```
+
+ESM only (`import`, Node 18+). There is no CommonJS build.
 
 ```ts
 import { sieve } from 'llm-stream-guardrails';
@@ -103,10 +113,41 @@ for await (const token of sieve(result.textStream)) {
 
 ### In a Web Streams pipeline (edge, browsers, `Response` bodies)
 
+`createSieveTransform()` is a `TransformStream<string, string>`. A `Response`
+body is a stream of bytes, so decode on the way in and encode on the way out:
+
 ```ts
 import { createSieveTransform } from 'llm-stream-guardrails';
 
-return new Response(upstream.pipeThrough(createSieveTransform()));
+return new Response(
+  upstream
+    .pipeThrough(new TextDecoderStream())
+    .pipeThrough(createSieveTransform())
+    .pipeThrough(new TextEncoderStream()),
+);
+```
+
+Piping a byte stream straight in would not throw — it would stringify each
+chunk and quietly ruin the output, so the two wrappers are not optional.
+
+### With the OpenAI and Anthropic SDKs
+
+Both yield event objects rather than strings. Map the text out first:
+
+```ts
+async function* text(stream) {
+  for await (const event of stream) {
+    // OpenAI chat completions
+    const delta = event.choices?.[0]?.delta?.content;
+    if (delta) yield delta;
+    // Anthropic messages
+    if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
+      yield event.delta.text;
+    }
+  }
+}
+
+for await (const token of sieve(text(stream))) process.stdout.write(token);
 ```
 
 ### On a complete string
@@ -159,7 +200,7 @@ must hold; no configuration can make it leak.
 | `phone` | International (`+cc`) and NANP with separators | Bare digit runs ignored |
 | `ssn` | US SSNs in separated form | Excludes never-issued ranges |
 | `iban` | International bank accounts | **mod-97 checksum** |
-| `secret` | OpenAI, Anthropic, Stripe, GitHub, GitLab, AWS, Google, Slack, SendGrid, npm, Twilio, DigitalOcean, JWTs, **and complete PEM private key blocks** | Prefix-anchored and bounded |
+| `secret` | 35 credential shapes: OpenAI, Anthropic, Stripe, GitHub (PATs and fine-grained), GitLab, AWS, Google, Slack (tokens and webhooks), Discord webhooks, SendGrid, npm, DigitalOcean, Hugging Face, Notion, Linear, Grafana, Docker, Shopify, Meta, Sourcegraph, RubyGems, PyPI, JWTs, **and complete PEM private key blocks** | Prefix-anchored and bounded |
 
 `ipAddress` is available but **opt-in** — IPs appear constantly in technical
 output and redacting them by default would be noise.
@@ -202,9 +243,17 @@ replayed in random 1–7 character chunks:
 | ai4privacy OpenPII-1M slice | CC-BY-4.0 | 2,000 | 51.0% | — | **0** |
 | gitleaks rule corpus | MIT | 295 | 47.1% | 72 | **0** |
 
+These four datasets are **not** vendored here — they carry their own licences,
+and the gitleaks fixtures are secret-shaped strings that belong in nobody's
+repository. Fetch them yourself, point `CORPORA_DIR` at them, then:
+
 ```bash
-npm run corpora     # reproduces the table (corpora downloaded separately)
+CORPORA_DIR=/path/to/corpora npm run corpora
 ```
+
+Without that directory the command exits and reports what is missing rather than
+producing a number. The table above is therefore evidence you can reproduce, not
+evidence you can re-run in one command.
 
 **Streamed output was byte-identical to batch output on all 8,795 samples.** That
 column is the one worth reading: it is the library's actual claim, and no public
@@ -226,7 +275,7 @@ Read the recall numbers honestly:
   different threat models. Genuine placeholders (`AKIAXXXXXXXXXXXXXXXX`,
   `${var.password}`) are now rejected outright.
 
-### Measured precision
+### Regression corpus (written here)
 
 False positives are why redaction libraries get uninstalled, so precision is a
 build gate rather than a claim. Run it yourself:
@@ -238,10 +287,14 @@ npm run bench
 | Metric | Result |
 | --- | --- |
 | Clean samples (must not be touched) | 39 |
-| **False positives** | **0** |
-| **Specificity** | **100%** |
+| False positives | 0 / 39 |
 | Sensitive samples (must be caught) | 15 |
-| **Recall** | **100%** |
+| Caught | 15 / 15 |
+
+This corpus was written here, and 54 samples is a regression gate, not a
+measurement. The third-party numbers in the table above — 47% to 81% recall on
+8,795 samples nobody here wrote — are the honest estimate of how this performs on
+text it has not seen.
 
 The clean corpus is deliberately adversarial — UUIDs, git SHAs, hex colours,
 version strings, order and batch numbers, tracking numbers, ISBNs, dates, and
@@ -290,7 +343,7 @@ Honest, tested, and encoded in the suite rather than hidden:
 npm test
 ```
 
-50 tests: the equivalence property across every input × policy × chunking, chunk
+The suite covers the equivalence property across every input × policy × chunking, chunk
 well-formedness under independent encoding, plus a regression test for every
 high-severity finding from an adversarial review — Unicode separator evasion,
 zero-width hiding, variable-length secret tail leaks, PEM body leaks, non-ASCII

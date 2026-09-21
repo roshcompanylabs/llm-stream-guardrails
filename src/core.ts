@@ -182,6 +182,12 @@ export function scanCanonical(text: string, detectors: Detector[]): RawHit[] {
 
 const isDigit = (code: number) => code >= 48 && code <= 57;
 
+/** A character that can appear inside a separated value group, e.g. an IBAN's `GB82` or `WEST`. */
+const isGroupChar = (code: number) => isDigit(code) || (code >= 65 && code <= 90);
+
+/** The longest IBAN any country issues, used to bound the grouped-value walk. */
+const IBAN_MAX_LENGTH = 34;
+
 /**
  * Characters that can sit inside some pattern, so a run of them may still grow.
  *
@@ -224,20 +230,35 @@ function viablePrefixStart(text: string, maxRetention: number): number {
    * Number`, `Bank Routing Number`) and costs a few words of latency.
    */
   let preLabelCross = 3;
+  /**
+   * An IBAN body is uppercase alphanumeric in groups — `GB82 WEST 1234 5698
+   * 7654 32` — so a letter after a group separator does not on its own prove
+   * this was never a grouped value. Without this, the walk reached `WEST`,
+   * concluded the digit-group hypothesis was wrong and released the whole
+   * account number in cleartext at any chunk size small enough to split it.
+   * Bounded by the longest possible IBAN so it cannot run away.
+   */
+  let ibanShape = true;
+  let alnumCrossed = 0;
+  const groupedViable = () => digitsOnly || (ibanShape && alnumCrossed <= IBAN_MAX_LENGTH);
 
   while (i > tokenLimit) {
     const code = text.charCodeAt(i - 1);
 
     if (isDigit(code)) {
+      alnumCrossed++;
       i--;
       continue;
     }
 
     if (isTokenChar(code)) {
-      // A letter after crossing a separator means this was never a digit group
-      // (`sk-...456 ` reads like `4111 1111 ` from the tail alone) — so undo the
-      // crossing rather than dragging the whole token back into the held region.
-      if (lastSeparatorCross >= 0) return lastSeparatorCross;
+      if (code >= 65 && code <= 90) alnumCrossed++; // 'A'-'Z'
+      else ibanShape = false;
+      // A letter after crossing a separator usually means this was never a digit
+      // group (`sk-...456 ` reads like `4111 1111 ` from the tail alone) — so
+      // undo the crossing rather than dragging the whole token back into the
+      // held region. Uppercase alphanumeric runs are the exception above.
+      if (lastSeparatorCross >= 0 && !groupedViable()) return lastSeparatorCross;
       if (code === 58 || code === 61) inLabel = true; // ':' or '='
       digitsOnly = false;
       i--;
@@ -280,13 +301,14 @@ function viablePrefixStart(text: string, maxRetention: number): number {
       }
     }
 
-    // A space or dash right after a digit may be a digit-group separator with
-    // more digits still to come.
+    // A space or dash right after a digit — or after an uppercase alphanumeric
+    // group, which is what an IBAN is made of — may be a group separator with
+    // more of the value still to come.
     if (
       (code === 32 || code === 45) &&
-      digitsOnly &&
+      groupedViable() &&
       i >= 2 &&
-      isDigit(text.charCodeAt(i - 2))
+      isGroupChar(text.charCodeAt(i - 2))
     ) {
       lastSeparatorCross = i;
       i--;
@@ -498,8 +520,20 @@ export class Sieve {
     if (detections.length > 0 && this.policy.action === 'block') {
       for (const d of detections) this.policy.onDetect?.(d);
       this.blocked = true;
+      // Release the text that precedes the first detection, then terminate.
+      //
+      // A stream has usually already delivered this prefix in earlier chunks and
+      // cannot take it back, so discarding it here would make a batch call and a
+      // streamed call disagree — which is the one thing this library promises
+      // never happens. The prefix is text the engine already settled as safe, so
+      // releasing it leaks nothing: everything from the detection onwards is
+      // dropped and the stream is closed.
+      const first = detections[0];
+      const cut = first ? clampCut(raw, Math.max(0, first.index - this.consumed)) : 0;
+      const safe = raw.slice(0, cut);
       this.raw = '';
-      return { text: '', detections, blocked: true };
+      this.consumed += cut;
+      return { text: safe, detections, blocked: true };
     }
 
     for (const d of detections) this.policy.onDetect?.(d);

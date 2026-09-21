@@ -5,12 +5,14 @@ dist/
 .env
 .env.*
 
-# private working notes
+# local drafts and scratch work
+notes/
+drafts/
 OUTREACH-*.md
+ISSUE-*.md
 playground/index.html
-*.tgz
 
 # never commit credentials
 .npmrc
 *.token
-ISSUE-*.md
+*.pem
