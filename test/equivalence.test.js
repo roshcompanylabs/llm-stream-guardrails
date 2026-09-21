@@ -127,6 +127,25 @@ test('EQUIVALENCE: streamed output is byte-identical to batch, every input x pol
   }
 });
 
+/**
+ * `String.prototype.isWellFormed` landed in Node 20, and this package supports
+ * Node 18. Same check, spelled out: a high surrogate must be followed by a low
+ * one, and a low surrogate must be preceded by a high one.
+ */
+const isWellFormed = (s) => {
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if (c >= 0xd800 && c <= 0xdbff) {
+      const next = s.charCodeAt(i + 1);
+      if (!(next >= 0xdc00 && next <= 0xdfff)) return false;
+      i++;
+    } else if (c >= 0xdc00 && c <= 0xdfff) {
+      return false;
+    }
+  }
+  return true;
+};
+
 test('WELL-FORMEDNESS: every emitted chunk survives an independent encode/decode', () => {
   const enc = new TextEncoder();
   const dec = new TextDecoder();
@@ -137,7 +156,7 @@ test('WELL-FORMEDNESS: every emitted chunk survives an independent encode/decode
 
       for (const chunk of chunks) {
         assert.equal(
-          chunk.isWellFormed(),
+          isWellFormed(chunk),
           true,
           `lone surrogate emitted at size ${size} in ${JSON.stringify(input.slice(0, 40))}`,
         );

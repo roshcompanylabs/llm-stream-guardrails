@@ -56,7 +56,7 @@
   "sideEffects": false,
   "scripts": {
     "build": "tsc",
-    "test": "npm run build && node --test test/",
+    "test": "npm run build && node --test",
     "prepublishOnly": "npm run build && node --test test/",
     "bench": "node bench/precision.mjs",
     "playground": "npm run build && node playground/build.cjs && node playground/server.mjs",
