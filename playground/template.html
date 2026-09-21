@@ -1,4 +1,41 @@
-<title>llm-stream-guardrails Playground</title>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Redact PII and secrets from a streaming LLM response — live demo</title>
+<meta name="description" content="Interactive demo of llm-stream-guardrails: a zero-dependency TypeScript library that removes PII, API keys and private keys from an LLM response while it streams, without buffering it. Drag the chunk size to one character and watch the output stay the same. Runs entirely in your browser.">
+<link rel="canonical" href="https://roshcompanylabs.github.io/llm-stream-guardrails/">
+<meta name="color-scheme" content="light dark">
+
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://roshcompanylabs.github.io/llm-stream-guardrails/">
+<meta property="og:title" content="Redact PII and secrets from a streaming LLM response — live demo">
+<meta property="og:description" content="Interactive demo of llm-stream-guardrails: a zero-dependency TypeScript library that removes PII, API keys and private keys from an LLM response while it streams, without buffering it. Drag the chunk size to one character and watch the output stay the same. Runs entirely in your browser.">
+<meta property="og:site_name" content="llm-stream-guardrails">
+
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Redact PII and secrets from a streaming LLM response — live demo">
+<meta name="twitter:description" content="Interactive demo of llm-stream-guardrails: a zero-dependency TypeScript library that removes PII, API keys and private keys from an LLM response while it streams, without buffering it. Drag the chunk size to one character and watch the output stay the same. Runs entirely in your browser.">
+
+<!-- No favicon request: an inline SVG avoids a 404 in every visitor's console. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230E7C86'/%3E%3Cpath d='M9 16h14M9 11h14M9 21h8' stroke='%23fff' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareSourceCode",
+  "name": "llm-stream-guardrails",
+  "description": "A zero-dependency TypeScript library that redacts PII and secrets from an LLM response while it streams, without buffering it. Streamed output is byte-identical to filtering the whole string at once, at any chunk boundary.",
+  "codeRepository": "https://github.com/roshcompanylabs/llm-stream-guardrails",
+  "programmingLanguage": "TypeScript",
+  "license": "https://opensource.org/licenses/MIT",
+  "author": { "@type": "Person", "name": "Redouane" },
+  "keywords": "PII redaction, LLM guardrails, streaming, data loss prevention, secret scanning, TypeScript"
+}
+</script>
+</head>
+<body>
 <style>
   :root {
     --bg: #F2F4F6; --surface: #FFFFFF; --surface-2: #E7EBEF; --surface-3: #DDE3E9;
@@ -284,3 +321,5 @@
   renderInstant();
 })();
 </script>
+</body>
+</html>

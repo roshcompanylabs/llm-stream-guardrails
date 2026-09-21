@@ -37,7 +37,9 @@ jobs:
 
       - name: Fail if the page is not self-contained
         run: |
-          if grep -qE '<script[^>]+src=|<link[^>]+href="http' playground/index.html; then
+          # Only asset loads count. A canonical link and the og: URLs are absolute
+          # by definition and fetch nothing.
+          if grep -qE '<script[^>]+src="http|<link[^>]+rel="(stylesheet|preconnect|preload|dns-prefetch)"' playground/index.html; then
             echo "The page pulls in an external asset; it must be one file."
             exit 1
           fi
