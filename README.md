@@ -323,6 +323,37 @@ than releases**. That run is exactly where a key would be.
 
 ---
 
+## What this is, and what it is not
+
+**This is defence in depth. It is not a compliance control.**
+
+Read the numbers on this page the right way round. The figure everyone quotes is
+false positives — harmless text that got masked — because that is the one that is
+easy to measure and the one that annoys you in testing. It is not the one that
+costs anything. The failure that matters is the opposite: a real card number, a
+real national ID, a real key that this library **did not** catch, sitting in a
+production transcript.
+
+Every number here is measured against a finite corpus. A detector catches the
+formats it was written for. It cannot catch a format nobody thought of, a
+credential shape invented last month, or a secret a model spelled out in prose.
+Recall on text nobody here wrote is **47% to 81%**, not 100%, and that is the
+honest figure — the 100% further up is a 54-sample regression gate, not a
+measurement.
+
+So: put this in front of a stream that should not carry secrets, and keep doing
+everything else you were already doing. Do not put it in front of a stream that
+*will* carry secrets and call the problem solved. It makes a leak less likely; it
+does not make one impossible.
+
+It is not certified against GDPR, HIPAA, PCI-DSS or any other regime, and no
+claim of compliance is made here. Those are properties of a system and its
+operator, never of a dependency.
+
+If you find a way past a detector, that is the most valuable bug report this
+project can receive — see [SECURITY.md](SECURITY.md) and please report it
+privately.
+
 ## Known limits
 
 Honest, tested, and encoded in the suite rather than hidden:
