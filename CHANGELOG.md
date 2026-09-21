@@ -2,6 +2,20 @@
 
 All notable changes to this project. Versions follow [semver](https://semver.org/).
 
+## 0.7.2
+
+### Fixed
+
+- **The author link on the npm page pointed at a string that is not a URL.** npm
+  normalises an author object into `name <email> (url)`, so the parentheses in
+  `Redouane (ROSH Company Labs)` were read as the url delimiter: npm took
+  `ROSH Company Labs` as the url and discarded the real one. The name no longer
+  contains parentheses.
+- Removed `RELEASE_NOTES_TMP.md`, a scratch file from cutting the 0.7.1 release
+  that was committed by accident. It contained nothing but three shell lines.
+
+No change to the library itself. 0.7.1 and 0.7.2 are identical in behaviour.
+
 ## 0.7.1
 
 A leak found by making the equivalence test tell the truth.
