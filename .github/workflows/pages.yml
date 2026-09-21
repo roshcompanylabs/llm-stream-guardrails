@@ -1,0 +1,75 @@
+name: Demo page
+
+# Builds the playground into a single self-contained HTML file and publishes it
+# to GitHub Pages. The page carries the real compiled library, not a mock or a
+# recording — the claim it exists to demonstrate is that chunking cannot change
+# the output, and that is only believable if the visitor can move the slider
+# themselves.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time; queued runs replace each other rather than racing.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Build the page
+        run: node playground/build.cjs
+
+      - name: Fail if the page is not self-contained
+        run: |
+          if grep -qE '<script[^>]+src=|<link[^>]+href="http' playground/index.html; then
+            echo "The page pulls in an external asset; it must be one file."
+            exit 1
+          fi
+          if ! grep -q 'llm-stream-guardrails' playground/index.html; then
+            echo "The bundle does not look like it was inlined."
+            exit 1
+          fi
+          echo "self-contained, $(wc -c < playground/index.html) bytes"
+
+      - name: No build-machine paths in the published page
+        run: |
+          if grep -qE '[A-Za-z]:[\\/]Users[\\/]|/home/[A-Za-z0-9._-]+/|sourceMappingURL' playground/index.html; then
+            echo "The page carries a build path."
+            exit 1
+          fi
+          echo "clean"
+
+      - name: Stage the site
+        run: |
+          mkdir -p _site
+          cp playground/index.html _site/index.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
