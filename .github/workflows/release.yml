@@ -1,9 +1,13 @@
 name: Release
 
-# Publishing happens here rather than from a laptop, for two reasons: npm only
-# issues a provenance attestation for a build it can verify, which means a run
-# it can see; and a token scoped to this workflow removes the interactive OTP
-# prompt without weakening the account's own two-factor requirement.
+# Publishing runs here rather than from a laptop so npm can verify the build and
+# issue a provenance attestation for it.
+#
+# Authentication is npm Trusted Publishing (OIDC): the job proves its identity to
+# the registry with a short-lived token minted by GitHub for this workflow, so
+# there is no npm token in this repository at all. npm removed the 2FA bypass
+# from automation tokens in August 2026 and is revoking classic tokens, which
+# makes this the only supported way to publish from CI.
 on:
   release:
     types: [published]
@@ -16,7 +20,7 @@ on:
 
 permissions:
   contents: read
-  id-token: write # required for provenance
+  id-token: write # required for OIDC
 
 jobs:
   publish:
@@ -26,8 +30,16 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          # Trusted publishing needs npm 11.5.1+ and Node 22.14+. Node 22 ships
+          # an older npm, so the CLI is upgraded explicitly below rather than
+          # left to whatever the runner image happens to carry.
+          node-version: '22'
           registry-url: 'https://registry.npmjs.org'
+
+      - name: Use an npm that supports trusted publishing
+        run: |
+          npm install -g npm@latest
+          npm --version
 
       - run: npm ci
       - run: npm run build
@@ -50,14 +62,12 @@ jobs:
           fi
           echo "version $PKG"
 
-      - name: Publish with provenance
+      # No --provenance flag and no token: trusted publishing attaches the
+      # attestation on its own.
+      - name: Publish
         if: github.event_name == 'release' || inputs.dry_run == false
-        run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public
 
       - name: Dry run
         if: github.event_name == 'workflow_dispatch' && inputs.dry_run == true
-        run: npm publish --provenance --access public --dry-run
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public --dry-run
