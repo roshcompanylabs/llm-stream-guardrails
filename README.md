@@ -366,4 +366,4 @@ the corpus in `bench/corpus.mjs`, so the build fails if it ever regresses.
 
 ## License
 
-MIT © ROSH Company Labs
+MIT © Redouane (ROSH Company Labs)
