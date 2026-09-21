@@ -5,6 +5,8 @@
 [![zero dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)](package.json)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
+**[▶ Try it live](https://roshcompanylabs.github.io/llm-stream-guardrails/)** — paste anything, drag the chunk size down to one character, and watch the output stay the same. It runs the real package in your browser; nothing you type leaves your device.
+
 **Redact PII and secrets from an LLM stream without buffering the response.**
 
 Most guardrails filter after the fact: you buffer the whole reply, then scan it.
