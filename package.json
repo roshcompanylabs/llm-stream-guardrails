@@ -1,6 +1,6 @@
 {
   "name": "llm-stream-guardrails",
-  "version": "0.7.2",
+  "version": "0.7.3",
   "description": "Redact PII and secrets from an LLM response while it streams, without buffering it. Streamed output is byte-identical to filtering the whole string at once, at any chunk boundary. Zero dependencies, TypeScript, ESM.",
   "keywords": [
     "pii",

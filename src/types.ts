@@ -150,4 +150,13 @@ export interface ResolvedPolicy {
   maxRetention: number;
   normalize: boolean;
   onDetect: ((detection: Detection) => void) | undefined;
+  /**
+   * How far the settlement walk may cross back over non-ASCII characters.
+   *
+   * Every built-in detector matches ASCII, so an ideograph cannot sit inside a
+   * card number, an IBAN or an API key and there is nothing to wait for. Banned
+   * words can be non-ASCII, so this is the length of the longest one that is —
+   * and zero when none are, which is the default.
+   */
+  nonAsciiSpan: number;
 }

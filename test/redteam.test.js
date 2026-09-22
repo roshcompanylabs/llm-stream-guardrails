@@ -229,3 +229,52 @@ test('an uppercase run that is not an IBAN still settles instead of pinning the 
     assert.equal(streamThrough(input, size), input, `mutated at size ${size}`);
   }
 });
+
+test('a language written without spaces still streams', () => {
+  // The walk crossed any character above code 32, because an unbroken run might
+  // be a long secret. Latin prose is full of spaces so it settled constantly;
+  // Japanese prose has none, so the whole paragraph was one token and nothing
+  // ever settled. The engine held an entire reply and released it at flush —
+  // safe, lossless, and not streaming, for every language written without
+  // spaces. No built-in detector can match an ideograph, so there was never
+  // anything to wait for.
+  const JA = 'こんにちは。ご質問ありがとうございます。設定ページを開いてください。'.repeat(20);
+
+  for (const size of [1, 3, 8, 32]) {
+    const engine = new Sieve({});
+    let pushed = 0;
+    let released = 0;
+    let firstOutputAt = -1;
+
+    for (let i = 0; i < JA.length; i += size) {
+      const chunk = JA.slice(i, i + size);
+      pushed += chunk.length;
+      const out = engine.push(chunk).text;
+      released += out.length;
+      if (out.length > 0 && firstOutputAt < 0) firstOutputAt = i + chunk.length;
+    }
+    released += engine.flush().text.length;
+
+    assert.equal(released, pushed, `lost text at size ${size}`);
+    assert.ok(firstOutputAt >= 0, `emitted nothing before flush at size ${size}`);
+    assert.ok(
+      firstOutputAt <= 64,
+      `held ${firstOutputAt} characters before the first byte at size ${size}`,
+    );
+  }
+});
+
+test('a non-ASCII banned word is still caught across chunk boundaries', () => {
+  // The fix bounds how far the walk crosses non-ASCII by the longest banned
+  // word, rather than refusing to cross at all — otherwise settling early would
+  // release half of 機密 before the other half arrived.
+  const policy = { bannedWords: ['секрет', '機密'] };
+
+  for (const input of ['この文書は機密です', 'пометка: секрет и всё', '機密']) {
+    const batch = sieveText(input, policy).text;
+    assert.notEqual(batch, input, `not caught at all: ${input}`);
+    for (const size of [1, 2, 3, 5, 64]) {
+      assert.equal(streamThrough(input, size, policy), batch, `size ${size} on ${input}`);
+    }
+  }
+});

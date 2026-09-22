@@ -106,6 +106,14 @@ export function resolvePolicy(policy: Policy = {}): ResolvedPolicy {
 
   const mask = policy.mask ?? ((d: Detection) => `[redacted:${d.detector}]`);
 
+  // Only a banned word can make non-ASCII text worth holding, so the budget is
+  // the longest one that is non-ASCII — and nothing at all by default.
+  let nonAsciiSpan = 0;
+  for (const word of policy.bannedWords ?? []) {
+    // eslint-disable-next-line no-control-regex
+    if (/[^\x00-\x7f]/.test(word)) nonAsciiSpan = Math.max(nonAsciiSpan, word.length);
+  }
+
   // Guard the ceiling: a NaN here previously disabled streaming entirely and
   // grew the buffer without bound until the process hung.
   // Floored at the viable window: this ceiling exists to bound a pathological
@@ -127,6 +135,7 @@ export function resolvePolicy(policy: Policy = {}): ResolvedPolicy {
     maxRetention,
     normalize: policy.normalize ?? true,
     onDetect: policy.onDetect,
+    nonAsciiSpan,
   };
 }
 
@@ -202,10 +211,29 @@ function isTokenChar(code: number): boolean {
 }
 
 /**
+ * A character no built-in detector can match, so the walk has nothing to gain by
+ * crossing it.
+ *
+ * Checked on the canonical plane, where a fullwidth digit is already folded to
+ * ASCII, so this is only true of characters that really cannot appear inside a
+ * credential — CJK ideographs, kana, Hangul, Thai. Without this, prose in a
+ * language written without spaces is one unbroken token and never settles: the
+ * engine held an entire Japanese reply and released it at the end, which is
+ * safe and is not streaming.
+ */
+function isForeignToScan(code: number): boolean {
+  return code > 0x7f;
+}
+
+/**
  * Walk back from the end over text that could still be part of a growing match.
  * Returns the canonical index where the unsettled tail begins.
  */
-function viablePrefixStart(text: string, maxRetention: number): number {
+function viablePrefixStart(
+  text: string,
+  maxRetention: number,
+  nonAsciiSpan: number,
+): number {
   const n = text.length;
   // An unbroken run of non-whitespace may be a single long secret — a JWT runs
   // to hundreds of characters — so it is bounded only by the real ceiling.
@@ -240,6 +268,8 @@ function viablePrefixStart(text: string, maxRetention: number): number {
    */
   let ibanShape = true;
   let alnumCrossed = 0;
+  /** Characters of non-ASCII text still worth crossing; see `nonAsciiSpan`. */
+  let foreignBudget = nonAsciiSpan;
   const groupedViable = () => digitsOnly || (ibanShape && alnumCrossed <= IBAN_MAX_LENGTH);
 
   while (i > tokenLimit) {
@@ -252,6 +282,24 @@ function viablePrefixStart(text: string, maxRetention: number): number {
     }
 
     if (isTokenChar(code)) {
+      // A character no detector can match ends the walk, once any budget the
+      // banned-word list needs has been spent. Crossing further buys nothing and
+      // costs everything in a language written without spaces.
+      if (isForeignToScan(code)) {
+        if (foreignBudget <= 0) {
+          // Settling here would release a high surrogate whose partner has not
+          // arrived, and the consumer would render a replacement character. An
+          // emoji arriving one UTF-16 unit at a time hits this on every pair.
+          if (code >= 0xd800 && code <= 0xdbff) i--;
+          break;
+        }
+        foreignBudget--;
+        ibanShape = false;
+        digitsOnly = false;
+        if (lastSeparatorCross >= 0) return lastSeparatorCross;
+        i--;
+        continue;
+      }
       if (code >= 65 && code <= 90) alnumCrossed++; // 'A'-'Z'
       else ibanShape = false;
       // A letter after crossing a separator usually means this was never a digit
@@ -410,7 +458,7 @@ export class Sieve {
     const hits = scanCanonical(text, this.policy.detectors);
 
     // Where is it safe to stop holding?
-    let settle = final ? text.length : viablePrefixStart(text, this.policy.maxRetention);
+    let settle = final ? text.length : viablePrefixStart(text, this.policy.maxRetention, this.policy.nonAsciiSpan);
 
     // An unterminated pending region makes everything from its marker unsafe.
     // `confirmed` separates a real unterminated block (which must fail closed)

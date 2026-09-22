@@ -2,6 +2,38 @@
 
 All notable changes to this project. Versions follow [semver](https://semver.org/).
 
+## 0.7.3
+
+### Fixed
+
+- **Text in a language written without spaces did not stream.** The settlement
+  walk crossed every character above code 32, because an unbroken run might be a
+  long secret such as a JWT. Latin prose is full of spaces and settled
+  constantly. Japanese, Chinese, Korean and Thai prose has none, so an entire
+  paragraph was one unbroken token, nothing ever settled, and the engine held
+  the whole text block and released it at flush. Nothing leaked and nothing was
+  lost — it simply stopped being a streaming filter for those languages.
+
+  No built-in detector can match an ideograph; every one of them is ASCII. So
+  the walk now settles at a character no detector can match, the way it settles
+  at a space. Banned words can be non-ASCII, so crossing is still allowed, but
+  bounded by the length of the longest non-ASCII banned word rather than
+  unbounded — and zero when there are none, which is the default.
+
+  A 680-character Japanese reply now holds 0 characters and emits from the first
+  one, against 680 held and nothing before flush in 0.7.2. English is unchanged
+  at about 20.
+
+  Found by measuring rather than by a test: two independent harnesses disagreed
+  about the worst-case hold, and chasing the difference found that there was no
+  worst case.
+
+### Changed
+
+- The README latency figures now say they were measured on text written with
+  spaces, and give the space-less case separately. They read as a general claim
+  about the engine while measuring only the case that worked.
+
 ## 0.7.2
 
 ### Fixed
