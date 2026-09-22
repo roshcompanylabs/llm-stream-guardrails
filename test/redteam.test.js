@@ -278,3 +278,28 @@ test('a non-ASCII banned word is still caught across chunk boundaries', () => {
     }
   }
 });
+
+test('settling at a foreign character does not blind the detectors to what follows it', () => {
+  // The space-less fix settles earlier, and everything it settles is released.
+  // A value sitting immediately after an ideograph, with no space between them,
+  // is the case that would break if settling were too eager — and it is how a
+  // Japanese or Chinese assistant reply actually formats a value.
+  const CASES = [
+    ['email', 'ご連絡先はjane.doe@acme-corp.comです。'],
+    ['creditCard', 'カード番号は4111 1111 1111 1111です。'],
+    ['secret', '您的密钥是sk-proj-abcdefghijklmnopqrstuvwxyz0123456789，请妥善保管。'],
+    ['iban', '口座はGB82 WEST 1234 5698 7654 32です。'],
+    ['email', '日本語jane@b.co日本語'],
+  ];
+
+  for (const [detector, input] of CASES) {
+    const { text, detections } = sieveText(input);
+    assert.ok(
+      detections.some((d) => d.detector === detector),
+      `${detector} not found in ${input}`,
+    );
+    for (const size of [1, 2, 3, 5, 8, 64]) {
+      assert.equal(streamThrough(input, size), text, `size ${size} on ${input}`);
+    }
+  }
+});
