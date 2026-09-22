@@ -68,7 +68,7 @@
     "typescript": "^5.6.0",
     "@types/node": "^20.14.0"
   },
-  "homepage": "https://github.com/roshcompanylabs/llm-stream-guardrails#readme",
+  "homepage": "https://roshcompanylabs.com/labs",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/roshcompanylabs/llm-stream-guardrails.git"
