@@ -2,6 +2,39 @@
 
 All notable changes to this project. Versions follow [semver](https://semver.org/).
 
+## 0.7.4
+
+### Fixed
+
+- **The cut guard only recognised Latin combining marks.** It enumerated
+  U+0300–U+036F, so Arabic harakat, Hebrew niqqud, Devanagari matras, Thai
+  vowel signs and Cyrillic combining marks — 1,238 code points — were not
+  treated as marks, and a cut could land between a letter and the mark that
+  belongs to it. It now tests the Unicode Mark property.
+
+  For Latin the cost of that is a frame of a bare vowel before the accent
+  lands. For Devanagari and Thai a matra is not decoration, and the consonant
+  alone renders as a different syllable until the rest arrives.
+
+  Prompted by a question on the write-up: does the surrogate-pair fix hold
+  trailing combining marks too?
+
+### Added
+
+- A test asserting the filter never splits a grapheme cluster that arrived
+  intact — across Arabic, Devanagari, Hebrew, Thai, Latin combining marks, a
+  ZWJ emoji sequence and a variation selector, at five chunk sizes. A boundary
+  counts only if the filter created it and a mark sits on the far side;
+  boundaries the input already had are not the filter's doing.
+
+  Measured before the change, 0 of 40 combinations introduced a split, because
+  where a base and its mark arrive in different input chunks the filter passes
+  that through unchanged and frequently coalesces rather than splits. So the
+  fix above is defensive at the cut points rather than a leak repair, and the
+  test says which of the two it is.
+
+- `npm run latency`, the time-to-first-token benchmark.
+
 ## 0.7.3
 
 ### Fixed
