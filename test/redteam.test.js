@@ -303,3 +303,54 @@ test('settling at a foreign character does not blind the detectors to what follo
     }
   }
 });
+
+test('a grapheme cluster that arrived intact is never split by the filter', () => {
+  // Asked publicly after the surrogate-pair fix: does it hold trailing
+  // combining marks too, or only surrogate pairs?
+  //
+  // The honest question is not whether a base and its mark end up in different
+  // chunks — that is decided by whoever chunked the input. It is whether the
+  // filter moves a boundary that was not there before. A boundary counts here
+  // only if the filter created it and a mark sits on the far side.
+  const SAMPLES = [
+    'مَرْحَبًا بِكُمْ فِي هَذَا النَّصِّ',
+    'नमस्ते यह एक सामान्य वाक्य है',
+    'שָׁלוֹם זֶה טֶקְסְט רָגִיל',
+    'สวัสดีนี่คือข้อความปกติ',
+    'cafe\u0301 nai\u0308ve re\u0301sume\u0301',
+    'family 👨‍👩‍👧‍👦 here',
+    'heart ❤️ and ✅ done',
+    'カード 4111 1111 1111 1111 です',
+  ];
+
+  const boundaries = (chunks) => {
+    const out = [];
+    let at = 0;
+    for (const c of chunks.slice(0, -1)) { at += c.length; out.push(at); }
+    return out;
+  };
+
+  for (const text of SAMPLES) {
+    for (const size of [1, 2, 3, 5, 8]) {
+      const input = [];
+      for (let i = 0; i < text.length; i += size) input.push(text.slice(i, i + size));
+
+      const engine = new Sieve({});
+      const output = [];
+      for (const c of input) { const o = engine.push(c).text; if (o) output.push(o); }
+      const f = engine.flush().text;
+      if (f) output.push(f);
+
+      const had = new Set(boundaries(input));
+      const joined = output.join('');
+      const created = boundaries(output).filter(
+        (b) => !had.has(b) && b < joined.length && /\p{M}/u.test(joined[b]),
+      );
+
+      assert.deepEqual(
+        created, [],
+        `split a grapheme at ${created} in ${JSON.stringify(text.slice(0, 24))} @ size ${size}`,
+      );
+    }
+  }
+});

@@ -368,10 +368,26 @@ function viablePrefixStart(
   return i;
 }
 
+/**
+ * Any Unicode mark — nonspacing, spacing or enclosing.
+ *
+ * The enumerated version of this covered U+0300–U+036F only, which is Latin.
+ * That left Arabic harakat, Devanagari matras, Hebrew niqqud and Thai vowel
+ * signs to be cut away from the letter they belong to. For Latin the cost is a
+ * frame of a bare vowel before the accent lands; for Devanagari and Thai a
+ * matra is not decoration and the consonant alone renders as a different
+ * syllable until the rest arrives.
+ */
+const MARK = /\p{M}/u;
+
 const isJoiner = (code: number) =>
-  (code >= 0x0300 && code <= 0x036f) || // combining marks
+  code === 0x200d || // zero-width joiner
   (code >= 0xfe00 && code <= 0xfe0f) || // variation selectors
-  code === 0x200d; // zero-width joiner
+  // Below U+0300 there are no marks, and the surrogate range is handled by the
+  // pair check rather than here — both skipped before touching the regex.
+  (code >= 0x0300 &&
+    (code < 0xd800 || code > 0xdfff) &&
+    MARK.test(String.fromCharCode(code)));
 
 /**
  * Never cut inside a surrogate pair or immediately before a combining character.
