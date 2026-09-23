@@ -329,6 +329,32 @@ two real defects:
 
 Both are locked in `test/precision.test.js`, so a regression fails the build.
 
+### Latency
+
+The cost of settling rather than buffering, measured against an unfiltered stream
+of the same shape. Reproduce with `npm run latency`.
+
+| Corpus | Characters held before the first byte |
+| --- | ---: |
+| Assistant reply, no sensitive values | 16 |
+| Assistant reply containing an email, a card and a phone number | 21 |
+| Markdown with a fenced code block | 8 |
+| Japanese reply | **0** |
+
+The delay is structural rather than computational: it is the wait for enough
+input to prove a match cannot still grow. Added CPU is 2–10 µs per chunk, which
+is a rounding error beside the interval between chunks.
+
+So the added time to first token is those characters divided by the rate the
+model emits them. At 4 characters per chunk and 20 ms between chunks, that is
+80 ms for ordinary prose and 100 ms for a reply carrying PII. At 16 characters
+per chunk it is one chunk, and on a language written without spaces it is none,
+because an ideograph cannot be part of anything the detectors match.
+
+The structural figures are deterministic and were identical across three runs.
+
+---
+
 ### Fail-closed containment
 
 A PEM private key body is unremarkable base64 that no pattern can safely claim.

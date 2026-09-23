@@ -48,7 +48,8 @@
     "CHANGELOG.md",
     "README.md",
     "LICENSE",
-    "SECURITY.md"
+    "SECURITY.md",
+    "bench/latency.mjs"
   ],
   "engines": {
     "node": ">=18"
@@ -62,7 +63,8 @@
     "playground": "npm run build && node playground/build.cjs && node playground/server.mjs",
     "corpora": "npm run build && node bench/corpora.mjs",
     "adversarial": "npm run build && node bench/adversarial.mjs",
-    "leak-gate": "node scripts/leak-gate.mjs"
+    "leak-gate": "node scripts/leak-gate.mjs",
+    "latency": "node bench/latency.mjs"
   },
   "devDependencies": {
     "typescript": "^5.6.0",
