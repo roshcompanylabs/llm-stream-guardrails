@@ -40,3 +40,6 @@ jobs:
       - run: npm run build
       - name: No local path, username or machine name in the published tarball
         run: node scripts/leak-gate.mjs
+
+      - name: The test count in CONTRIBUTING.md matches the suite
+        run: node scripts/docs-gate.mjs

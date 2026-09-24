@@ -17,7 +17,7 @@ hostname anywhere in a diff. A tool that exists to prevent leaks cannot ship one
 
 ```bash
 npm install
-npm test        # 69 tests
+npm test        # 79 tests
 npm run bench   # precision gate: 0 false positives required
 ```
 

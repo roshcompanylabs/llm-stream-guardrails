@@ -64,7 +64,8 @@
     "corpora": "npm run build && node bench/corpora.mjs",
     "adversarial": "npm run build && node bench/adversarial.mjs",
     "leak-gate": "node scripts/leak-gate.mjs",
-    "latency": "node bench/latency.mjs"
+    "latency": "node bench/latency.mjs",
+    "docs-gate": "node scripts/docs-gate.mjs"
   },
   "devDependencies": {
     "typescript": "^5.6.0",
