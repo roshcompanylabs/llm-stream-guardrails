@@ -125,6 +125,19 @@
   .empty { padding: 16px 14px; color: var(--muted); font-size: .85rem; }
 
   .note { margin-top: 18px; font-size: .83rem; color: var(--muted); max-width: 72ch; }
+
+  .limits { margin-top: 26px; padding: 14px 16px; border: 1px solid var(--border); border-left: 3px solid var(--danger); border-radius: var(--r); background: var(--surface); max-width: 78ch; }
+  .limits h2 { margin: 0 0 6px; font-size: .95rem; color: var(--ink); }
+  .limits p { margin: 0 0 8px; font-size: .86rem; color: var(--ink-2); }
+  .limits p:last-child { margin-bottom: 0; }
+
+  footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 16px 26px; align-items: center; justify-content: space-between; }
+  .inst { display: flex; align-items: center; gap: 8px; background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: 7px; padding: 7px 8px 7px 12px; font-family: var(--mono); font-size: .84rem; color: var(--ink); }
+  .inst button { font-family: var(--mono); font-size: .72rem; padding: 4px 9px; }
+  .links { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: .86rem; }
+  .links a { color: var(--accent); text-decoration: none; border-bottom: 1px solid transparent; }
+  .links a:hover { border-bottom-color: var(--accent); }
+  .meta { width: 100%; font-family: var(--mono); font-size: .72rem; letter-spacing: .04em; color: var(--muted); }
   .note code { font-family: var(--mono); background: var(--surface-2); padding: 1px 6px; border-radius: 5px; color: var(--ink-2); }
 
   .toggle { position: fixed; top: 14px; right: 14px; z-index: 9; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; }
@@ -139,7 +152,7 @@
   <header>
     <h1 class="brand">llm-stream-<span class="dot">guardrails</span></h1>
     <p class="tag">Filters PII, secrets and banned content out of an LLM stream — <b>mid-stream</b>, before the reader ever sees it. Type anything below and watch it work.</p>
-    <div class="promise"><span>◆</span><span>For <b>any</b> input and <b>any</b> chunking, the streamed result is byte-identical to filtering the whole string at once. Drag the chunk size down to 1 character — it still catches everything.</span></div>
+    <div class="promise"><span>◆</span><span>For <b>any</b> input and <b>any</b> chunking, the streamed result is byte-identical to filtering the whole string at once. Drag the chunk size down to 1 character — the output does not change.</span></div>
   </header>
 
   <div class="panel controls">
@@ -184,6 +197,23 @@
   </div>
 
   <p class="note">This page runs the real <code>llm-stream-guardrails</code> package compiled to the browser — the same code published to npm. Nothing you type leaves your device; there is no server and no network call.</p>
+
+  <section class="limits">
+    <h2>What it does not do</h2>
+    <p>Every example above was chosen because it gets caught. That is not the measurement. A detector finds the formats it was written for; it cannot find a shape nobody thought of, a credential invented last month, or a secret the model spelled out in prose. On text nobody here wrote, recall is <b>47% to 81%</b> — not 100%.</p>
+    <p>So it is defence in depth, not a compliance control. It makes a leak less likely. It does not make one impossible, and it is not certified against GDPR, HIPAA, PCI-DSS or anything else — those are properties of a system and its operator, never of a dependency.</p>
+  </section>
+
+  <footer>
+    <div class="inst"><span id="cmd">npm install llm-stream-guardrails</span><button id="copyBtn" aria-label="Copy the install command">copy</button></div>
+    <nav class="links">
+      <a href="https://github.com/roshcompanylabs/llm-stream-guardrails">Source on GitHub</a>
+      <a href="https://www.npmjs.com/package/llm-stream-guardrails">npm</a>
+      <a href="https://github.com/roshcompanylabs/llm-stream-guardrails/blob/main/CHANGELOG.md">Changelog</a>
+      <a href="https://github.com/roshcompanylabs/llm-stream-guardrails/issues">Report a miss</a>
+    </nav>
+    <p class="meta">v__SS_VERSION__ · zero dependencies · MIT © Redouane (ROSH Company Labs) · this page is the compiled package, not a recording</p>
+  </footer>
 </div>
 
 <script>
@@ -194,6 +224,28 @@
 (function () {
   var $ = function (id) { return document.getElementById(id); };
   var root = document.documentElement;
+
+  var copyBtn = $('copyBtn');
+  copyBtn.addEventListener('click', function () {
+    var flash = function (word) { copyBtn.textContent = word; setTimeout(function () { copyBtn.textContent = 'copy'; }, 1500); };
+    // Where the clipboard is denied — an embedded frame, a locked-down
+    // browser — select the command instead, so the keyboard still works.
+    var fallback = function () {
+      try {
+        var r = document.createRange();
+        r.selectNodeContents($('cmd'));
+        var s = getSelection();
+        s.removeAllRanges();
+        s.addRange(r);
+        flash('press ⌘/ctrl+C');
+      } catch (e) { flash('copy failed'); }
+    };
+    try {
+      var w = navigator.clipboard && navigator.clipboard.writeText($('cmd').textContent);
+      if (w && w.then) w.then(function () { flash('copied'); }, fallback);
+      else fallback();
+    } catch (e) { fallback(); }
+  });
 
   try { var t = localStorage.getItem('ss-theme'); if (t === 'dark' || t === 'light') root.setAttribute('data-theme', t); } catch (e) {}
   $('themeBtn').addEventListener('click', function () {

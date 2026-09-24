@@ -21,7 +21,16 @@ for (const f of order) {
 
 const tpl = fs.readFileSync(path.join(__dirname, 'template.html'), 'utf8');
 if (!tpl.includes('/*__STREAMSIEVE_BUNDLE__*/')) throw new Error('placeholder missing');
-const out = tpl.replace('/*__STREAMSIEVE_BUNDLE__*/', bundle);
+if (!tpl.includes('__SS_VERSION__')) throw new Error('version placeholder missing');
+
+// The page states a version. Taking it from package.json rather than the
+// template means it cannot drift from the code that was inlined beside it.
+const version = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).version;
+
+const out = tpl
+  .replace('/*__STREAMSIEVE_BUNDLE__*/', bundle)
+  .split('__SS_VERSION__').join(version);
+if (out.includes('__SS_VERSION__')) throw new Error('version placeholder survived');
 
 fs.writeFileSync(path.join(__dirname, 'index.html'), out);
-console.log('playground/index.html rebuilt — ' + (out.length / 1024).toFixed(1) + ' KB');
+console.log('playground/index.html rebuilt — ' + (out.length / 1024).toFixed(1) + ' KB, v' + version);

@@ -49,6 +49,24 @@ jobs:
           fi
           echo "self-contained, $(wc -c < playground/index.html) bytes"
 
+      - name: The page states the version it actually carries
+        run: |
+          V=$(node -p "require('./package.json').version")
+          if grep -q '__SS_VERSION__' playground/index.html; then
+            echo "The version placeholder was published verbatim."
+            exit 1
+          fi
+          if ! grep -q "v$V" playground/index.html; then
+            echo "The page does not state v$V, which is the version it was built from."
+            exit 1
+          fi
+          # A visitor who is convinced needs somewhere to go, and the page is
+          # the surface that gets shared rather than the README.
+          for u in             "github.com/roshcompanylabs/llm-stream-guardrails"             "npmjs.com/package/llm-stream-guardrails"; do
+            grep -q "$u" playground/index.html || { echo "missing link: $u"; exit 1; }
+          done
+          echo "states v$V, links out"
+
       - name: No build-machine paths in the published page
         run: |
           if grep -qE '[A-Za-z]:[\\/]Users[\\/]|/home/[A-Za-z0-9._-]+/|sourceMappingURL' playground/index.html; then
