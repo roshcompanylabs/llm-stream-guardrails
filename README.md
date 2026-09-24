@@ -109,11 +109,6 @@ never emits text it has not scanned in final form.
 
   Reproduce with `npm run latency`, which reports the same measurement as the
   added time to first token at three inter-chunk intervals.
-  window. Measured over 2,482 `push()` calls across five corpora and eight chunk
-  sizes, with no detectable value present: median 19, mean 20.2, p95 40, max 58 —
-  the larger figures come from text dense in digits, and from CJK. Near a value
-  that might still be growing it holds more, by design. There is no latency dial
-  to tune, and no way to configure a leak.
 
 ---
 
