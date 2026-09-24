@@ -400,3 +400,48 @@ test('a JWT with a large payload is still caught', () => {
     }
   }
 });
+
+test('no configuration can put the ceiling below a pattern it must hold', () => {
+  // Raised on a public thread: a bounded tail that releases on overflow is a
+  // fixed window wearing a better name, because an adversary who knows the
+  // threshold can cross it. The honest answer is to fail closed — and better
+  // still, to make the configuration that creates the choice unreachable.
+  //
+  // maxRetention is floored at the longest bounded pattern, so a caller cannot
+  // ask for a ceiling a match could outgrow. This asserts the floor holds
+  // whatever is requested.
+  const seg = (n) => {
+    let out = '';
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    for (let i = 0; i < n; i++) out += alphabet[(i * 7 + 13) % alphabet.length];
+    return out;
+  };
+  const jwt = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ${seg(2000)}.${seg(43)}`;
+  const input = `Authorization: Bearer ${jwt}`;
+  const head = jwt.slice(0, 48);
+
+  for (const requested of [8192, 2048, 1024, 256, 1, 0, -5, NaN]) {
+    const out = streamThrough(input, 7, { maxRetention: requested });
+    assert.ok(
+      !out.includes(head),
+      `released a JWT fragment with maxRetention ${requested}`,
+    );
+  }
+});
+
+test('an unterminated PEM block fails closed whatever the ceiling', () => {
+  // The one genuinely unbounded case is not a pattern, it is a pending region.
+  // No ceiling can cover it, so the overflow decision is made explicitly: an
+  // opener with no closer masks rather than releases.
+  const body = 'MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcw'.repeat(300);
+  const input = `-----BEGIN RSA PRIVATE KEY-----\n${body}`;
+
+  for (const ceiling of [8192, 1024, 256, 1]) {
+    const out = streamThrough(input, 7, { maxRetention: ceiling });
+    assert.ok(
+      !out.includes('MIIEvQIBADANBgkq'),
+      `released a key body with maxRetention ${ceiling}`,
+    );
+    assert.ok(out.includes('redacted'), `masked nothing with maxRetention ${ceiling}`);
+  }
+});

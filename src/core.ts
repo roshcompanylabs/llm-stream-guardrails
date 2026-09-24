@@ -53,6 +53,28 @@ const DEFAULT_MAX_RETENTION = 8192;
  */
 const VIABLE_WINDOW = 256;
 
+/**
+ * The floor under `maxRetention`, and the reason the ceiling cannot become a
+ * fixed window under another name.
+ *
+ * Every bounded pattern must fit inside the retained tail, or the engine
+ * reaches its ceiling with a match still open and has to choose between
+ * releasing text that may be the first half of a secret and refusing. That
+ * choice is where this class of bug reappears, so the configuration that
+ * creates it is made unreachable rather than documented: a `maxRetention`
+ * below this is raised to it.
+ *
+ * The longest pattern is the JWT, at three 2,048-character segments plus two
+ * separators and the `eyJ` prefix — 6,147. Rounded up for headroom, and
+ * asserted against the compiled patterns in the suite so a future detector
+ * cannot quietly outgrow it.
+ *
+ * The genuinely unbounded case, a PEM block, is not a pattern. It is a pending
+ * region, and it fails closed: an opener with no closer masks rather than
+ * releases, whatever the ceiling.
+ */
+const LONGEST_PATTERN = 6400;
+
 /** A match in canonical coordinates. */
 interface RawHit {
   detector: string;
@@ -121,7 +143,7 @@ export function resolvePolicy(policy: Policy = {}): ResolvedPolicy {
   // make the engine mask ordinary text instead of releasing it.
   const requested = policy.maxRetention;
   const maxRetention = Math.max(
-    VIABLE_WINDOW,
+    LONGEST_PATTERN,
     typeof requested === 'number' && Number.isFinite(requested) && requested > 0
       ? Math.floor(requested)
       : DEFAULT_MAX_RETENTION,

@@ -359,7 +359,13 @@ export function labeledSensitiveDetector(extraLabels: string[] = []): Detector {
         labels.join('|') +
         // The emphasis skip must not fire when the "emphasis" IS the value:
         // `Password: ***` would otherwise consume `**` and redact a lone `*`.
-        ')\\*{0,2}_{0,2}[ \\t]*[:=][ \\t]*(?:(?:\\*{1,2}|_{1,2}|`)(?![*_`]))?[ \\t]*' +
+        // Bounded, not `*`. Three unbounded whitespace runs made the longest
+      // possible match unbounded too, which is the one property the retention
+      // ceiling has to be able to cover: if a pattern can outgrow the tail, the
+      // engine meets its ceiling with a match still open and has to choose
+      // between releasing a possible secret and refusing. 32 is well past any
+      // real alignment in a config file or a key-value dump.
+      ')\\*{0,2}_{0,2}[ \\t]{0,32}[:=][ \\t]{0,32}(?:(?:\\*{1,2}|_{1,2}|`)(?![*_`]))?[ \\t]{0,32}' +
         '("[^"\\r\\n]{0,200}"|\'[^\'\\r\\n]{0,200}\'|\\S{1,200})',
       'gi',
     ),

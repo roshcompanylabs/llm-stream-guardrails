@@ -2,6 +2,36 @@
 
 All notable changes to this project. Versions follow [semver](https://semver.org/).
 
+## 0.7.6
+
+Raised on a public thread, and the criticism landed: *a bounded tail that
+releases on overflow is a fixed window wearing a better name, because an
+adversary who knows the threshold can cross it.*
+
+That was true here for one configuration. `maxRetention` was floored at 256,
+while the longest pattern could match 6,149 characters, so a caller who set a
+low ceiling got exactly the behaviour being described — the engine met its
+limit with a match still open and released.
+
+### Fixed
+
+- **`maxRetention` is floored at the longest bounded pattern, not at 256.**
+  The unsafe configuration is now unreachable rather than documented. A ceiling
+  a match could outgrow cannot be requested.
+
+- **Two unbounded quantifiers made the longest possible match unbounded.** The
+  label detector allowed unlimited whitespace on both sides of the separator,
+  so no ceiling could have covered it. Bounded at 32, which is well past any
+  real alignment in a config file. The longest label match is 1,132 characters
+  now, down from no limit at all.
+
+### Unchanged, and worth stating
+
+The genuinely unbounded case is a PEM block, and it is not a pattern — it is a
+pending region. No ceiling can cover it, so the overflow decision is made
+explicitly and it fails closed: an opener with no closer masks rather than
+releases, at any ceiling. That is now asserted rather than assumed.
+
 ## 0.7.5
 
 Both of these came out of a question about what a bounded buffer must do when
