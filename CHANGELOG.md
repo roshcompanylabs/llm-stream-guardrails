@@ -2,6 +2,39 @@
 
 All notable changes to this project. Versions follow [semver](https://semver.org/).
 
+## 0.7.5
+
+Both of these came out of a question about what a bounded buffer must do when
+a variable-length pattern is still open at the ceiling. Chasing it found that
+two of the patterns had the wrong bound, in opposite directions.
+
+### Fixed
+
+- **An unbroken run made the scan quadratic.** The label detector opened with
+  an unbounded `[A-Za-z0-9_]*`, so `DATABASE_PASSWORD` would match on its
+  prefix. On text with no whitespace the engine retried that from every
+  position and consumed the rest of the buffer each time. One scan of 8,000
+  unbroken characters took **870 ms**; ordinary prose of the same length took
+  0.3 ms. A model emitting a single long token was enough to reach it.
+
+  The prefix is bounded at 64 now, which is far past any real one —
+  `PRODUCTION_POSTGRES_PRIMARY_PASSWORD` has a 28-character prefix. Same 8,000
+  characters: **15.9 ms**, and the cost is linear again.
+
+- **A JWT with a payload over 1,024 characters was not detected.** Each segment
+  was bounded at 1,024 and the failure was a miss rather than an error, so
+  nothing said so. Claims carrying scopes or role lists pass that size in
+  ordinary use. Bounded at 2,048 per segment now, which puts the longest
+  matchable token near 6,150 characters — inside the 8,192 default retention
+  ceiling, so settlement can still hold a whole one.
+
+### Added
+
+- A test asserting one scan of 16,000 unbroken characters finishes in under a
+  second. The old behaviour was roughly 3.5 s at that size.
+- A test asserting JWTs with 40, 600, 1,400 and 2,000-character segments are
+  caught, in batch and at three chunk sizes.
+
 ## 0.7.4
 
 ### Fixed

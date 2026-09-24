@@ -354,3 +354,49 @@ test('a grapheme cluster that arrived intact is never split by the filter', () =
     }
   }
 });
+
+test('an unbroken run does not make the scan quadratic', () => {
+  // The label detector opened with an unbounded `[A-Za-z0-9_]*`, so that the
+  // prefix in DATABASE_PASSWORD would match. On text with no whitespace the
+  // engine retried it from every position and consumed the rest of the buffer
+  // each time. 8,000 characters took 870 ms in a single scan while ordinary
+  // prose of the same length took 0.3 ms, and a model emitting one long token
+  // was enough to reach it. The prefix is bounded now.
+  //
+  // The ceiling here is generous on purpose: a slow shared runner should not
+  // fail this, but the old behaviour was roughly 3.5 s at this size and cannot
+  // pass it.
+  const input = 'eyJ' + 'A'.repeat(16000);
+
+  sieveText(input); // warm, so this measures the scan and not the first compile
+
+  const started = process.hrtime.bigint();
+  sieveText(input);
+  const ms = Number(process.hrtime.bigint() - started) / 1e6;
+
+  assert.ok(ms < 1000, `one scan of 16,000 unbroken characters took ${ms.toFixed(0)}ms`);
+});
+
+test('a JWT with a large payload is still caught', () => {
+  // Each segment was bounded at 1,024, so a token carrying more than that in
+  // its claims stopped matching — silently, as a miss rather than an error.
+  // Scopes and role lists reach that size in ordinary use.
+  const seg = (n) => {
+    let out = '';
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    for (let i = 0; i < n; i++) out += alphabet[(i * 7 + 13) % alphabet.length];
+    return out;
+  };
+
+  for (const size of [40, 600, 1400, 2000]) {
+    const jwt = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ${seg(size)}.${seg(43)}`;
+    const input = `Authorization: Bearer ${jwt}`;
+
+    const { text } = sieveText(input);
+    assert.ok(!text.includes(jwt.slice(0, 48)), `segment of ${size} not caught in batch`);
+
+    for (const chunk of [1, 5, 64]) {
+      assert.equal(streamThrough(input, chunk), text, `segment ${size} at chunk ${chunk}`);
+    }
+  }
+});

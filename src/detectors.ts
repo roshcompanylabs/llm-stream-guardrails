@@ -201,7 +201,16 @@ export const secret: Detector = {
       'pypi-[A-Za-z0-9_-]{50,}', // PyPI upload token
       'hooks\\.slack\\.com/services/[A-Za-z0-9/]{20,}', // Slack incoming webhook
       'discord(?:app)?\\.com/api/webhooks/\\d{15,}/[A-Za-z0-9_-]{50,}', // Discord webhook
-      'eyJ[A-Za-z0-9_-]{10,1024}\\.[A-Za-z0-9_-]{10,1024}\\.[A-Za-z0-9_-]{10,1024}', // JWT
+      // JWT. Each segment was bounded at 1024, which silently stopped matching
+      // any token whose payload carried more than that — a realistic size once
+      // scopes, roles and permissions are in the claims, and the failure was a
+      // miss rather than an error. 2048 per segment puts the longest matchable
+      // token at roughly 6,150 characters, comfortably inside the 8192 default
+      // retention ceiling so settlement can still hold a whole one.
+      //
+      // The quantifiers stay bounded and the separator is not in the character
+      // class, so there is no ambiguity for a backtracking engine to explore.
+      'eyJ[A-Za-z0-9_-]{10,2048}\\.[A-Za-z0-9_-]{10,2048}\\.[A-Za-z0-9_-]{10,2048}', // JWT
     ]
       // A leading word boundary on every alternative. Without it `ASIA[A-Z]{16}`
       // matched inside the sentence TODAYINASIAASACKOFRICEFELLOVER, and `hf_`
@@ -338,7 +347,15 @@ export function labeledSensitiveDetector(extraLabels: string[] = []): Detector {
       // Markdown emphasis is allowed to sit between the separator and the value.
       // Models format records as `**Date of Birth:** 1959-03-13`, and without
       // this the "value" captured was the `**`.
-      '[A-Za-z0-9_]*(?:' +
+      // Bounded, not `*`. Unbounded, the engine retried this prefix from every
+      // position in an unbroken run and consumed the rest of the buffer each
+      // time, which is quadratic: 8,000 characters with no whitespace took
+      // 870 ms in one scan while ordinary prose of the same length took 0.3 ms.
+      // A model emitting one long token was enough to trigger it.
+      //
+      // 64 is far past any real prefix — `DATABASE_`, `PRODUCTION_POSTGRES_`
+      // and the like are well under 30 — and it caps the work per position.
+      '[A-Za-z0-9_]{0,64}(?:' +
         labels.join('|') +
         // The emphasis skip must not fire when the "emphasis" IS the value:
         // `Password: ***` would otherwise consume `**` and redact a lone `*`.
