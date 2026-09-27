@@ -76,6 +76,7 @@
     "type": "git",
     "url": "git+https://github.com/roshcompanylabs/llm-stream-guardrails.git"
   },
+  "funding": "https://github.com/sponsors/roshcompanylabs",
   "bugs": {
     "url": "https://github.com/roshcompanylabs/llm-stream-guardrails/issues"
   }
