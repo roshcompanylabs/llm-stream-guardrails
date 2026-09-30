@@ -23,9 +23,12 @@ if (!claimed) {
 
 // `node --test` reports the totals on stdout; a non-zero exit here would mean the
 // suite itself is broken, which the test job already covers, so surface it plainly.
+// The reporter is pinned to tap because the default changed between Node versions
+// and the line this parses (`# pass N`) exists only in tap — left to the default,
+// the gate reads nothing on a newer Node and fails for the wrong reason.
 let out;
 try {
-  out = execFileSync('node', ['--test'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  out = execFileSync('node', ['--test', '--test-reporter=tap'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
 } catch (err) {
   out = `${err.stdout ?? ''}${err.stderr ?? ''}`;
 }

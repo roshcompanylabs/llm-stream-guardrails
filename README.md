@@ -69,6 +69,14 @@ the same as if you had buffered.
 That is the whole product, and it is enforced by a property test across every
 input × policy × chunk-size combination in CI, not by a promise in a README.
 
+It is also asserted by someone else's definition of it. [`chunk-invariance`](https://www.npmjs.com/package/chunk-invariance)
+is an independent package that states the same invariant and names the smallest
+failing split; `npm run test:invariance` runs it over 7,612 splits of eleven
+bodies and passes. That file ends with a control — a filter that redacts each
+chunk on its own — which **must** fail the assertion, so a green run cannot be
+vacuous. It adds no coverage this suite did not already have. What it adds is
+that the property is not graded by the author of the thing being graded.
+
 ## The problem
 
 Filtering a *finished* LLM response is easy. Filtering a **streaming** one is not.
@@ -413,7 +421,8 @@ Honest, tested, and encoded in the suite rather than hidden:
 npm test
 ```
 
-The suite covers the equivalence property across every input × policy × chunking, chunk
+The suite covers the equivalence property across every input × policy × chunking — and,
+independently, via the third-party `chunk-invariance` assertion — chunk
 well-formedness under independent encoding, plus a regression test for every
 high-severity finding from an adversarial review — Unicode separator evasion,
 zero-width hiding, variable-length secret tail leaks, PEM body leaks, non-ASCII
