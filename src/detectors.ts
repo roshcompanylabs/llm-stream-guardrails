@@ -43,13 +43,19 @@ export function luhn(value: string): boolean {
  * `${aws_db_instance.default.password}`, `var.db_password`. Redacting those is
  * pure noise — it corrupts a code sample while protecting nobody.
  *
- * The run-of-four test is the workhorse: a random token essentially never
- * repeats one character four times, while every placeholder convention does.
+ * The run test is the workhorse: a human-typed placeholder fills the whole
+ * variable part with one character, while a real token carries only short
+ * incidental runs. A run of four was too tight — a genuine high-entropy token
+ * does throw up the occasional `0000`/`aaaa`, and a credential prefixed `ghp_`,
+ * `sk-ant-…` or `AKIA` that happened to contain one was released in clear as if
+ * it were a placeholder. Six keeps catching every filled-in placeholder
+ * (`AKIAXXXXXXXXXXXXXXXX`, 16 X) while essentially never firing on a real token:
+ * a run of six is a ~1-in-10^7 event even for a 40-char hex string.
  */
 export function notPlaceholder(value: string): boolean {
   if (!notTemplateRef(value)) return false;
   const s = unquote(value);
-  if (/(.)\1{3,}/.test(s)) return false; // xxxx, 0000, ----, ####
+  if (/(.)\1{5,}/.test(s)) return false; // xxxxxx, 000000, ------, ######
   if (/^(?:your|my|some|changeme|placeholder|redacted|insert)[-_ ]/i.test(s)) return false;
   return true;
 }
@@ -399,9 +405,14 @@ export const pemPrivateKey: PendingRegion = {
   name: 'secret',
   openPrefix: '-----BEGIN ',
   open: /-----BEGIN [A-Z ]{0,40}PRIVATE KEY-----/g,
-  // Any END closes the region. A certificate block therefore closes cleanly and
-  // passes through untouched, while an unterminated block is held and masked.
-  close: /-----END [A-Z ]{0,40}-----/g,
+  // Only a matching END PRIVATE KEY closes the region. An earlier form accepted
+  // any `-----END …-----`, so a private-key block closed by `-----END
+  // CERTIFICATE-----` (or any other label) was treated as terminated and its
+  // body streamed out in clear. A standalone certificate never opens the region
+  // in the first place — `open` requires PRIVATE KEY — so it still passes through
+  // untouched; what this tightening fixes is a private key with a non-matching
+  // footer, which must be held and masked, not released.
+  close: /-----END [A-Z ]{0,40}PRIVATE KEY-----/g,
 };
 
 export const defaultPendingRegions: PendingRegion[] = [pemPrivateKey];

@@ -233,6 +233,21 @@ function isTokenChar(code: number): boolean {
 }
 
 /**
+ * A word character in the ASCII `\b` sense — `[A-Za-z0-9_]`. A value glued to one
+ * of these has no word boundary before it, so a `\b`-anchored detector never
+ * matches it; releasing up to a boundary char, by contrast, leaves the value
+ * starting exactly where the whole-string scan would also see a boundary.
+ */
+function isWordChar(code: number): boolean {
+  return (
+    (code >= 48 && code <= 57) || // 0-9
+    (code >= 65 && code <= 90) || // A-Z
+    (code >= 97 && code <= 122) || // a-z
+    code === 95 // _
+  );
+}
+
+/**
  * A character no built-in detector can match, so the walk has nothing to gain by
  * crossing it.
  *
@@ -322,13 +337,32 @@ function viablePrefixStart(
         i--;
         continue;
       }
+      // Was the grouped-value hypothesis still alive coming into this char?
+      // Evaluated before the char below can kill it.
+      const groupedBefore = groupedViable();
       if (code >= 65 && code <= 90) alnumCrossed++; // 'A'-'Z'
       else ibanShape = false;
       // A letter after crossing a separator usually means this was never a digit
       // group (`sk-...456 ` reads like `4111 1111 ` from the tail alone) — so
       // undo the crossing rather than dragging the whole token back into the
       // held region. Uppercase alphanumeric runs are the exception above.
-      if (lastSeparatorCross >= 0 && !groupedViable()) return lastSeparatorCross;
+      if (lastSeparatorCross >= 0 && !groupedViable()) {
+        // But if the run to the right was a clean grouped value right up to a
+        // NON-WORD boundary char (groupedBefore, e.g. a quote or paren directly
+        // before an IBAN), a `\b`-anchored match can start just after that char —
+        // exactly as the whole-string scan sees it. Releasing to the interior
+        // separator would instead stream the value out in pieces that can never
+        // re-form the match, while whole-string masks it. Hold from here.
+        //
+        // The non-word test is essential: when the boundary char is itself a word
+        // character (`idGB82…`), there is no `\b`, so the whole-string scan does
+        // NOT match the value — and holding-then-rematching would invent a mask
+        // that whole-string never produces, breaking the invariant the other way.
+        // In that case fall through and keep walking so the glued run stays whole
+        // and is released as the non-match it is.
+        if (groupedBefore && !isWordChar(code)) break;
+        if (!groupedBefore) return lastSeparatorCross;
+      }
       if (code === 58 || code === 61) inLabel = true; // ':' or '='
       digitsOnly = false;
       i--;
@@ -510,11 +544,45 @@ export class Sieve {
       let from = -1;
       let confirmed = false;
 
-      const marker = text.lastIndexOf(region.openPrefix);
-      if (marker >= 0) {
-        region.close.lastIndex = marker;
-        if (region.close.exec(text) === null) {
-          from = marker;
+      // Find the first opener that has no corresponding closer after it.
+      //
+      // Two things this must get right, and the previous `lastIndexOf` form got
+      // wrong:
+      //  - It pairs the region's OWN openers and closers (via `open`/`close`),
+      //    not the shared `openPrefix` literal. A `BEGIN … PRIVATE KEY` is not
+      //    closed by an `END CERTIFICATE`; only an `END … PRIVATE KEY` closes it.
+      //  - It holds from the FIRST unpaired opener, not the last. Two key headers
+      //    with one body between them, or a key followed by a complete cert block,
+      //    used to resolve the marker to the second `BEGIN` and stream the first
+      //    body out in clear.
+      //
+      // Blocks do not nest, so a closer pairs with the most recent unpaired
+      // opener before it; any opener still unpaired at the end is a region that
+      // never closed, and the earliest such opener is where holding must begin.
+      const opens: number[] = [];
+      region.open.lastIndex = 0;
+      let om: RegExpExecArray | null;
+      while ((om = region.open.exec(text)) !== null) {
+        if (om[0].length === 0) { region.open.lastIndex++; continue; }
+        opens.push(om.index);
+      }
+      if (opens.length > 0) {
+        const closes: number[] = [];
+        region.close.lastIndex = 0;
+        let cm: RegExpExecArray | null;
+        while ((cm = region.close.exec(text)) !== null) {
+          if (cm[0].length === 0) { region.close.lastIndex++; continue; }
+          closes.push(cm.index);
+        }
+        const stack: number[] = [];
+        let oi = 0;
+        for (const cpos of closes) {
+          while (oi < opens.length && opens[oi]! < cpos) stack.push(opens[oi++]!);
+          if (stack.length > 0) stack.pop();
+        }
+        while (oi < opens.length) stack.push(opens[oi++]!);
+        if (stack.length > 0) {
+          from = stack[0]!;
           confirmed = true;
         }
       }

@@ -31,10 +31,15 @@ export interface Canonical {
 function isInvisible(code: number): boolean {
   return (
     code === 0x00ad || // soft hyphen
+    code === 0x061c || // arabic letter mark
+    code === 0x180e || // mongolian vowel separator (zero-width)
     code === 0x200b || // zero-width space
     code === 0x200c || // zero-width non-joiner
     code === 0x200d || // zero-width joiner
     code === 0x2060 || // word joiner
+    (code >= 0x2061 && code <= 0x2064) || // invisible math operators / separator
+    code === 0x3164 || // hangul filler
+    code === 0xffa0 || // halfwidth hangul filler
     code === 0xfeff || // BOM / zero-width no-break space
     (code >= 0x200e && code <= 0x200f) || // LTR/RTL marks
     (code >= 0x202a && code <= 0x202e) || // bidi embedding/override
@@ -48,6 +53,7 @@ function isInvisible(code: number): boolean {
 function isUnicodeSpace(code: number): boolean {
   return (
     code === 0x00a0 || // no-break space
+    code === 0x1680 || // ogham space mark
     (code >= 0x2000 && code <= 0x200a) || // en/em/thin/hair spaces
     code === 0x202f || // narrow no-break space
     code === 0x205f || // medium mathematical space
@@ -59,7 +65,9 @@ function isUnicodeSpace(code: number): boolean {
 function isUnicodeDash(code: number): boolean {
   return (
     (code >= 0x2010 && code <= 0x2015) || // hyphen .. horizontal bar
+    code === 0x2043 || // hyphen bullet
     code === 0x2212 || // minus sign
+    (code >= 0x2e3a && code <= 0x2e3b) || // two-em / three-em dash
     code === 0xfe58 ||
     code === 0xfe63 ||
     code === 0xff0d // fullwidth hyphen-minus
@@ -77,8 +85,14 @@ const HOMOGLYPHS = new Map<number, string>([
   [0x0410, 'A'], [0x0412, 'B'], [0x0415, 'E'], [0x041a, 'K'],
   [0x041c, 'M'], [0x041d, 'H'], [0x041e, 'O'], [0x0420, 'P'],
   [0x0421, 'C'], [0x0422, 'T'], [0x0425, 'X'],
+  // Further Cyrillic capitals that read as Latin.
+  [0x0405, 'S'], [0x0406, 'I'], [0x0408, 'J'], [0x04ae, 'Y'],
   [0x03bf, 'o'], [0x03b1, 'a'], [0x03b5, 'e'], [0x03c1, 'p'],
   [0x0391, 'A'], [0x0392, 'B'], [0x0395, 'E'], [0x039f, 'O'],
+  // Further Greek capitals that read as Latin.
+  [0x0396, 'Z'], [0x0397, 'H'], [0x0399, 'I'], [0x039a, 'K'],
+  [0x039c, 'M'], [0x039d, 'N'], [0x03a1, 'P'], [0x03a4, 'T'],
+  [0x03a5, 'Y'], [0x03a7, 'X'],
 ]);
 
 /**
