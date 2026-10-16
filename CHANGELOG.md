@@ -2,6 +2,34 @@
 
 All notable changes to this project. Versions follow [semver](https://semver.org/).
 
+## 0.7.9
+
+A pass against the library's own threat model — the one in `SECURITY.md` — turned up
+four ways a value the default policy should mask could still reach the reader. The
+first put a PEM private key's body on screen in clear; the rest are narrower. All four
+are closed here, each with a regression test that fails on the previous build.
+
+### Fixed
+
+- A `BEGIN … PRIVATE KEY` block closed by a non-matching footer — `-----END
+  CERTIFICATE-----`, or any `END` that is not an `END … PRIVATE KEY` — was treated as
+  terminated, so only its header was masked and the key body streamed out in clear.
+  The pending region now closes only on a matching `END … PRIVATE KEY`, and holds from
+  the first unclosed opener rather than the last `BEGIN`, so a key followed by a
+  certificate block, or a second key header, no longer leaks the first body. A
+  standalone certificate still passes through untouched.
+- A valid IBAN written directly after a punctuation character — a JSON quote, a paren
+  — was masked when the whole string was filtered but released in pieces when the same
+  input was streamed. The settlement walk now holds such a value from its boundary,
+  while leaving a word-glued run alone, so streamed output stays identical to
+  whole-string output.
+- A real credential that happened to contain a run of four identical characters was
+  released as though it were a documentation placeholder. The run heuristic now
+  triggers at six, which still catches a filled-in placeholder while no longer dropping
+  a real token.
+- Added the invisible and format characters, Greek and Cyrillic capital homoglyphs,
+  and space and dash look-alikes that could carry a value past a detector.
+
 ## 0.7.6
 
 Raised on a public thread, and the criticism landed: *a bounded tail that
